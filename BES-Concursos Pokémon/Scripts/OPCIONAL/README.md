@@ -1,0 +1,1 @@
+IMPORTANTE: NECESITA **Marin [Better Bitmaps](https://eeveeexpo.com/resources/169/)** sin el crasheara.

@@ -1,0 +1,2357 @@
+################################################################################
+#  Pokemon Contest by mej71
+#  edit for v18.dev by Tastyredtomato
+#---------------------------------------
+# based on the original Contest script by mej71
+# see the original thread for installation and use instructions
+# please credit when used
+################################################################################
+class PokeContestScene
+  MAXHEART_ROW = 8
+  
+  # ---------------------------------------------------------------------------
+  # Constantes para la pantalla de resultados
+  # ---------------------------------------------------------------------------
+
+  RESULTS_BAR_START_X = 96     # Posición inicial de las barras
+  RESULTS_BAR_Y_BASE = 104-16  # Posición Y base
+  RESULTS_BAR_SPACING = 64     # Espacio entre barras
+  RESULTS_BAR_HEIGHT = 8       # Altura de cada barra
+  RESULTS_BAR_MAX_WIDTH = 384  # Ancho máximo total
+  ICON_BOX_X = 8               # Posición X del cuadro blanco
+  ICON_BOX_Y_OFFSET = 64 - 8   # Offset Y para el icono
+  POSITION_BOX_X = 438         # Posición X del cuadro verde
+  POSITION_BOX_Y = 64 - 16 + 4
+  
+  # Colores para diferentes fases
+  PRELIM_BAR_COLOR = Color.new(150, 50, 150)    # Morado para preliminares
+  ROUND_BAR_COLOR  = Color.new(50, 50, 255)
+  STARS_BAR_COLOR  = Color.new(255, 215, 0)      # Dorado para estrellas
+  
+  # Constantes para posiciones
+  POKEMON_SPRITE_START_X = 512   # Posición inicial fuera de pantalla a la derecha
+  POKEMON_SPRITE_TARGET_X = 178 - 64  # Posición final
+  POKEMON_SPRITE_Y = 112         # Posición Y fija
+  ANIMATION_STEPS = 8            # Pasos de animación
+  ANIMATION_DELAY = 1            # Frames de espera entre pasos
+
+  TRANSITION_DURATION = 30  # Frames para la animación de cortina
+  
+  SHORTEN_MOVES = true
+  
+  # ---------------------------------------------------------------------------
+  # Obtener color del concurso
+  # ---------------------------------------------------------------------------
+  def pbGetContestColor
+    case @contestType.to_s
+    when "Cool"
+      return Color.new(178, 34, 34)
+    when "Beauty"
+      return Color.new(0, 0, 255)
+    when "Smart"
+      return Color.new(0, 100, 0)
+    when "Tough"
+      return Color.new(255, 215, 0)
+    when "Cute"
+      return Color.new(255, 0, 255)
+    else
+      return Color.new(128, 128, 128)
+    end
+  end
+  
+  ######################## NO SE USAN!
+  def show_round_banner(turnnumber)
+    round_files = [
+      "Graphics/Pictures/Contest/Roundone",
+      "Graphics/Pictures/Contest/Roundtwo", 
+      "Graphics/Pictures/Contest/Roundthree",
+      "Graphics/Pictures/Contest/Roundfour",
+      "Graphics/Pictures/Contest/Roundfive"
+    ]
+    
+    round_file = round_files[turnnumber - 1] || round_files[4]
+    @sprites["Round"] = IconSprite.new(0, 0, @viewport2)
+    @sprites["Round"].setBitmap(round_file)
+    
+    Graphics.update
+    
+    # Animación de entrada
+    9.times do |i|
+      @sprites["Round"].y += (i % 4 < 2 ? 6 : -6)
+      Graphics.update
+      pbWait(4)
+    end
+    
+    pbDisposeSprite(@sprites, "Round")
+  end
+  
+  def show_judge_intro
+    @sprites["Judge"] = IconSprite.new(0, 0, @viewport2)
+    @sprites["Judge"].setBitmap("Graphics/Characters/trainer017")
+    
+    pbShowJudgeMessage(_INTL("Welcome to today's {1} Type Pokemon Contest\nIt's heartwarming to see all these young trainers here to show off their Pokemon's skills!", @contestName))
+    pbShowJudgeMessage(_INTL("I'm going to be the judge for this competition, so let's get started!"))
+    
+    pbDisposeSprite(@sprites, "Judge")
+    Graphics.update
+  end
+  ########################
+  
+  def pbShowJudgeMessage(text)
+    text = _INTL("{2}{1}",text,"<c3=3050c8,98a1ff>")
+    pbShowMessage(text,false)
+  end
+  
+  def pbShowMessage(text, brief=false,*args)
+    pbShowMessageWindow(_INTL(text), brief)
+  end
+  
+  def pbWaitMessage
+    if @briefmessage
+      pbShowWindow(MESSAGEBOX)
+      cw=@sprites["messagewindow"]
+      60.times do
+        pbGraphicsUpdate
+        pbInputUpdate
+        pbFrameUpdate(cw)
+      end
+      cw.text=""
+      cw.visible=false
+      @briefmessage=false
+    end
+  end
+  
+  def pbShowMessageWindow(msg, brief = false)
+    # Asegurar que la ventana de mensajes existe
+    if !@sprites["messagewindow"]
+      create_message_window
+    end
+    pbWaitMessage if respond_to?(:pbWaitMessage)
+    cw = @sprites["messagewindow"]
+    cw.text = _INTL(msg)
+    cw.visible = true
+    if brief # Mensaje breve (se cierra automáticamente)
+      show_brief_message(cw)
+    else # Mensaje normal (espera entrada del jugador)
+      show_normal_message(cw)
+    end
+  end
+  
+  def create_message_window
+    # Crear ventana de mensajes para concurso
+    @sprites["messagewindow"] = Window_AdvancedTextPokemon.new("")
+    @sprites["messagewindow"].viewport = @viewport2
+    @sprites["messagewindow"].z = 100000
+    @sprites["messagewindow"].visible = false
+    @sprites["messagewindow"].letterbyletter = true
+    @sprites["messagewindow"].width = 340-4 #Graphics.width - 40
+    @sprites["messagewindow"].height = 128
+    @sprites["messagewindow"].x = 0
+    @sprites["messagewindow"].y = Graphics.height - @sprites["messagewindow"].height
+    @sprites["messagewindow"].setSkin("Graphics/Pictures/Contest/choice 29")
+  end
+  
+  def show_brief_message(cw)
+    # Mostrar mensaje breve por un tiempo fijo
+    60.times do
+      Graphics.update
+      Input.update
+      cw.update
+    end
+    cw.text = ""
+    cw.visible = false
+  end
+  
+  def show_normal_message(cw)
+    # Mostrar mensaje normal hasta que el jugador presione C
+    loop do
+      Graphics.update
+      Input.update
+      cw.update
+      
+      if Input.trigger?(Input::C)
+        if cw.busy?
+          # Si aún se está mostrando texto, acelerar
+          pbPlayDecisionSE
+          cw.resume
+        else
+          # Si ya terminó, cerrar mensaje
+          pbPlayDecisionSE
+          cw.text = ""
+          cw.visible = false
+          break
+        end
+      end
+    end
+  end
+  
+  def pbDrawText
+    @sprites["overlay2"].bitmap.clear if @sprites["overlay2"]
+    #change graphic indicating what position the player's pokemon is at
+    if !@sprites["playerspokebg"]
+      @sprites["playerspokebg"]=IconSprite.new(336,96, @viewport2)
+      @sprites["playerspokebg"].setBitmap("Graphics/Pictures/Contest/player_overlay")
+    end
+    for i in 0..3
+      if @pokeorder[i]==@pkmn1
+        @sprites["playerspokebg"].y=96*i
+      end
+    end
+    @sprites["overlay2"]=BitmapSprite.new(Graphics.width, Graphics.height, @viewport2) if !@sprites["overlay2"]
+    pbSetNarrowFont(@sprites["overlay2"].bitmap)
+    overlay=@sprites["overlay2"].bitmap
+    overlay.clear
+    baseColor   = Color.new(72,72,72)
+    shadowColor = Color.new(160,160,160)
+    textPositions=[]
+    textPositions << [_INTL("{1}",@pokeorder[0].name),344,4,0,baseColor,shadowColor]
+    textPositions << [_INTL("/ {1}",@pokeorder[0].ot),504,4,1,baseColor,shadowColor] if @pokeorder[0].ot != "" 
+    textPositions << [_INTL("{1}",@pokeorder[1].name),344,100,0,baseColor,shadowColor]
+    textPositions << [_INTL("/ {1}",@pokeorder[1].ot),504,100,1,baseColor,shadowColor] if @pokeorder[1].ot != "" 
+    textPositions << [_INTL("{1}",@pokeorder[2].name),344,196,0,baseColor,shadowColor]
+    textPositions << [_INTL("/ {1}",@pokeorder[2].ot),504,196,1,baseColor,shadowColor] if @pokeorder[2].ot != "" 
+    textPositions << [_INTL("{1}",@pokeorder[3].name),344,292,0,baseColor,shadowColor]
+    textPositions << [_INTL("/ {1}",@pokeorder[3].ot),504,292,1,baseColor,shadowColor] if @pokeorder[3].ot != "" 
+    pbDrawTextPositions(overlay,textPositions)
+    if @pokeorder && !@pokeorder.empty?
+      pbUpdateAllStars
+      pbNoMoreMovesGraphic
+    end
+  end
+  
+################################################################################
+# Move Buttons
+################################################################################  
+  def getMoveName(move)
+    movename = PBMoves.getName(move)
+    #movename = move.name
+    if PokeBattle_SceneConstants::SHORTEN_MOVES && movename.length > 16
+      # Elimina la palabra "de" y los espacios extra
+      movename = movename.gsub(" de ", " ")
+      if movename.length > 16 #Corta de nuevo si sigue siendo muy grande
+        movename = movename[0..12] + "..."
+      end
+      return movename
+    end
+    return movename
+  end
+  
+  def pbMoveButtons
+    pokemon = @pkmn1
+    @viewport = Viewport.new(0, 0, Graphics.width, Graphics.height)
+    @viewport.z = 99999
+    
+    # Configuración inicial de sprites
+    @sprites["moves"] = IconSprite.new(0, 188, @viewport_hearts)
+    @sprites["moves"].setBitmap("Graphics/Pictures/Contest/moves_overlay")
+    
+    @sprites["overlay"] = BitmapSprite.new(Graphics.width, Graphics.height, @viewport_hearts)
+    @sprites["overlay1"] = BitmapSprite.new(Graphics.width, Graphics.height, @viewport_hearts)
+    @sprites["overlay"].z = @viewport_hearts.z+1
+    @sprites["overlay1"].z = @viewport_hearts.z+1
+    
+    overlay = @sprites["overlay"].bitmap
+    overlay1 = @sprites["overlay1"].bitmap
+    
+    pbSetNarrowFont(overlay)
+    pbSetSmallFont(overlay1)
+    
+    base_color = Color.new(64, 64, 64)
+    shadow_color = Color.new(0, 0, 0)
+    white_color = Color.new(256, 256, 256)
+    gray_color = Color.new(175, 175, 175)
+    
+    # Texto inicial
+    textpos   = []
+    textpos1  = []
+    imagepos  = []
+    imagepos1 = []  # <-- AÑADIDO: Array para imágenes del overlay1
+    
+    # Configuración de selección
+    selection = 0
+    y_pos = 200
+    x_pos = 14
+    select_y_pos = y_pos
+    
+    @sprites["selectbar"] = IconSprite.new(6, select_y_pos-4, @viewport_hearts)
+    @sprites["selectbar"].setBitmap("Graphics/Pictures/Contest/contestselect")
+    
+    # Función para actualizar selección
+    def update_selection(sel, sprites_hash, pkmn1, viewport2, textpos1_array, imagepos1_array)  # <-- AÑADIDO imagepos1_array
+      # Obtener datos del movimiento seleccionado
+      selected_move = pkmn1.moves[sel].id
+      contest_data = PBContestMoveData.new(selected_move)
+      selMove_type = pbContestTypeToNumber(contest_data.contestType)
+      # Actualizar corazones
+      pbDisposeSprite(sprites_hash, "selecthearts")
+      pbDisposeSprite(sprites_hash, "selectjam")
+      
+      hearts = contest_data.hearts || 4
+      jam = contest_data.jam || 0
+      
+      if hearts > 0
+        sprites_hash["selecthearts"] = pbCreateSimpleHeartSprite(368, 202, hearts, 0, viewport2)
+      end
+      
+      if jam > 0
+        sprites_hash["selectjam"] = pbCreateSimpleHeartSprite(368, 202+16, jam, 1, viewport2)
+      end
+      
+      # Actualizar texto e imagen
+      sprites_hash["overlay1"].bitmap.clear
+    
+      imagepos1_array.clear  # <-- LIMPIAR array de imágenes
+      imagepos1_array.push(["Graphics/Pictures/Contest/contesttype", 234, 204, 0, selMove_type * 28, 64, 28])  # <-- USAR imagepos1_array
+      
+      textpos1_array.clear
+      
+      textpos1_array.push([PBMoves.getName(pkmn1.moves[sel].id), 244, 204+32, 0, 
+                           Color.new(256,256,256), Color.new(0,0,0)])
+      
+      drawTextEx(sprites_hash["overlay1"].bitmap, 232+8, 262, 272-8, 0, 
+                 pbGetContestMoveDescription(selected_move), 
+                 Color.new(256,256,256), Color.new(0,0,0))
+      
+      pbDrawTextPositions(sprites_hash["overlay1"].bitmap, textpos1_array)
+      
+      
+      pbDrawImagePositions(sprites_hash["overlay1"].bitmap, imagepos1_array)  # <-- DIBUJAR imágenes
+    end
+    
+    # Dibujar lista de movimientos
+    pokemon.moves.each_with_index do |move, i|
+      next unless move.id > 0
+      
+      contest_data = PBContestMoveData.new(move.id)
+      move_type = pbContestTypeToNumber(contest_data.contestType)
+      
+      imagepos.push(["Graphics/Pictures/Contest/contesttype_small", x_pos, y_pos+4, 0, move_type * 28, 64, 28])
+      
+      # Color según si fue el último movimiento usado
+      text_color = (@pkmn1lastmoveid && move.id == @pkmn1lastmoveid) ? gray_color : white_color
+      textpos.push([getMoveName(move.id), x_pos + 30, y_pos, 0, text_color, shadow_color])
+      
+      
+      
+      y_pos += 46
+    end
+    
+    # Dibujar todo
+    pbDrawTextPositions(overlay, textpos)
+    pbDrawImagePositions(overlay, imagepos)
+    
+    # Mostrar selección inicial
+    update_selection(selection, @sprites, @pkmn1, @viewport_hearts, textpos1, imagepos1)  # <-- PASA imagepos1
+    
+    # Bucle principal
+    loop do
+      Graphics.update
+      Input.update
+      self.update
+      
+      if Input.trigger?(Input::DOWN) || Input.trigger?(Input::UP)
+        pbPlayCursorSE
+        # Cambiar selección
+        if Input.trigger?(Input::DOWN)
+          selection = (selection < 3) ? selection + 1 : 0
+        else
+          selection = (selection > 0) ? selection - 1 : 3
+        end
+        
+        # Actualizar posición de la barra   
+        @sprites["selectbar"].y = select_y_pos + (selection * @sprites["selectbar"].bitmap.height-4)       
+        
+        # Actualizar toda la selección
+        update_selection(selection, @sprites, @pkmn1, @viewport_hearts, textpos1, imagepos1)  # <-- PASA imagepos1
+        Input.update
+      end
+      
+      if Input.trigger?(Input::C)
+        pbPlayDecisionSE
+        @sprites["selectbar"].setBitmap("Graphics/Pictures/Contest/contestselect1")
+        pbWait(2)
+        @sprites["selectbar"].setBitmap("Graphics/Pictures/Contest/contestselect")
+        pbWait(2)
+        @sprites["selectbar"].setBitmap("Graphics/Pictures/Contest/contestselect1")
+        pbWait(2)
+        @moveselection = selection
+        overlay.clear if overlay
+        overlay1.clear if overlay1
+        textpos.clear if textpos
+        imagepos.clear if imagepos
+        textpos1.clear if textpos1
+        imagepos1.clear if imagepos1
+        
+        # Limpiar sprites
+        ["selecthearts", "selectjam", "moves", "selectbar", "overlay", "overlay1"].each do |sprite|
+          pbDisposeSprite(@sprites, sprite) if @sprites[sprite]
+        end
+        
+        Graphics.update
+        Input.update
+        break
+      end
+    end
+  end
+
+###############################################################################
+# Miscellaneous Graphic functions
+###############################################################################
+  def pbNervousGraphic
+    # Nombres de sprites y posiciones Y
+    nervous_data = [
+      ["nervousone", 50],
+      ["nervoustwo", 146], 
+      ["nervousthree", 242],
+      ["nervousfour", 338]
+    ]
+    
+    # Crear sprites si están nerviosos
+    nervous_data.each_with_index do |data, i|
+      sprite_name, y_pos = data
+      if @nervous[i] == true && !@sprites[sprite_name]
+        @sprites[sprite_name] = IconSprite.new(352, y_pos, @viewport_hearts)
+        @sprites[sprite_name].setBitmap("Graphics/Pictures/Contest/eff_nervous")
+      end
+    end
+    
+    # Eliminar sprites si no están nerviosos
+    nervous_data.each_with_index do |data, i|
+      sprite_name, _ = data
+      if @nervous[i] == false && @sprites[sprite_name]
+        pbDisposeSprite(@sprites, sprite_name)
+      end
+    end
+  end
+  
+  def pbObliviousGraphic
+    # Nombres de sprites
+    oblivious_names = ["obliviousone", "oblivioustwo", "obliviousthree", "obliviousfour"]
+    
+    # Crear sprites si están protegidos
+    oblivious_names.each_with_index do |sprite_name, i|
+      if (@Oblivious[i] == true || @AvoidOnce[i] > 0) && !@sprites[sprite_name]
+        y_pos = 50 + (96 * (@currentpos - 1))
+        @sprites[sprite_name] = IconSprite.new(352, y_pos, @viewport_hearts)
+        @sprites[sprite_name].setBitmap("Graphics/Pictures/Contest/eff_oblivious")
+      end
+    end
+    
+    # Eliminar sprites si no están protegidos
+    oblivious_names.each_with_index do |sprite_name, i|
+      if @Oblivious[i] == false && @AvoidOnce[i] == 0 && @sprites[sprite_name]
+        pbDisposeSprite(@sprites, sprite_name)
+      end
+    end
+  end
+  
+  def pbStartleGraphic(position, deletepos = 5)
+    # Nombres de sprites y posiciones Y
+    startle_data = [
+      ["startleone", 50],
+      ["startletwo", 146],
+      ["startlethree", 242],
+      ["startlefour", 338]
+    ]
+    
+    # Crear sprite en posición especificada
+    if position >= 0 && position <= 3 && !@sprites[startle_data[position][0]]
+      sprite_name, y_pos = startle_data[position]
+      @sprites[sprite_name] = IconSprite.new(352, y_pos, @viewport_hearts)
+      @sprites[sprite_name].setBitmap("Graphics/Pictures/Contest/eff_startle")
+    end
+    
+    # Eliminar sprite en posición deletepos
+    if deletepos >= 0 && deletepos <= 3 && @sprites[startle_data[deletepos][0]]
+      pbDisposeSprite(@sprites, startle_data[deletepos][0])
+    end
+    
+    Graphics.update
+  end
+  
+  def pbClearStartleGraphics
+    startle_sprites = ["startleone", "startletwo", "startlethree", "startlefour"]
+    
+    startle_sprites.each do |sprite_name|
+      if @sprites[sprite_name] && !@sprites[sprite_name].disposed?
+        pbDisposeSprite(@sprites, sprite_name)
+      end
+    end
+  end
+
+  def pbNoMoreMovesGraphic
+    return if !@pokeorder || @pokeorder.empty?
+    
+    # Datos de sprites fijos por posición visual
+    nomove_data = [
+      ["nomoveone", 50],
+      ["nomovetwo", 146], 
+      ["nomovethree", 242],
+      ["nomovefour", 338]
+    ]
+    
+    # Crear sprites según la posición ACTUAL en pantalla
+    4.times do |position|
+      pokemon = @pokeorder[position]
+      next if !pokemon
+      
+      # Determinar estado del Pokémon
+      no_more = false
+      miss_turn = false
+      
+      if pokemon == @pkmn1
+        no_more = @pkmn1nomoremoves
+        miss_turn = @pkmn1MissTurn
+      elsif pokemon == @pkmn2
+        no_more = @pkmn2nomoremoves
+        miss_turn = @pkmn2MissTurn
+      elsif pokemon == @pkmn3
+        no_more = @pkmn3nomoremoves
+        miss_turn = @pkmn3MissTurn
+      elsif pokemon == @pkmn4
+        no_more = @pkmn4nomoremoves
+        miss_turn = @pkmn4MissTurn
+      end
+      
+      sprite_name = nomove_data[position][0]
+      y_pos = nomove_data[position][1]
+      
+      # Mostrar gráfico si cumple CUALQUIERA de las condiciones
+      if (no_more or miss_turn)
+        if !@sprites[sprite_name]
+          @sprites[sprite_name] = IconSprite.new(352, y_pos, @viewport_hearts)
+          @sprites[sprite_name].setBitmap("Graphics/Pictures/Contest/eff_cross")
+        end
+      else
+        # Eliminar sprite si puede moverse
+        if @sprites[sprite_name]
+          pbDisposeSprite(@sprites, sprite_name)
+        end
+      end
+    end
+  end
+
+#####################
+
+  def pbDecreaseStarGraphics(position, change, decrease=true)
+    # position es la posición en el display (0-3)
+    return if position < 0 or position > 3
+    # Determinar qué Pokémon está en esta posición
+    if @pokeorder.nil? or @pokeorder[position].nil?
+      return
+    end
+    pokemon = @pokeorder[position]
+    # Determinar variable de estrellas
+    stars_var = nil
+    if pokemon == @pkmn1
+      stars_var = :pkmn1stars
+    elsif pokemon == @pkmn2
+      stars_var = :pkmn2stars
+    elsif pokemon == @pkmn3
+      stars_var = :pkmn3stars
+    elsif pokemon == @pkmn4
+      stars_var = :pkmn4stars
+    end
+    return if stars_var.nil?
+    current_stars = instance_variable_get("@#{stars_var}")
+    change.times do |i| # Animar el cambio
+      if decrease
+        break if current_stars <= 0
+        current_stars -= 1
+      else
+        current_stars += 1
+      end
+      instance_variable_set("@#{stars_var}", current_stars)
+      pbUpdateStarDisplay(position) # Actualizar display
+      pbWait(4)
+      Graphics.update
+      break if decrease and current_stars == 0
+    end
+  end
+  #-----------------------------------------------------------------------------
+  # Sistema de corazones optimizado
+  #-----------------------------------------------------------------------------
+  def pbCreateSimpleHeartSprite(x, y, count, type, viewport)
+    return nil if count <= 0
+    
+    # Determinar qué imagen usar según el tipo
+    case type
+    when 0  # Corazones normales
+      image_name = "Graphics/Pictures/Contest/heart"
+      sprite_width = 16
+      sprite_height = 16
+    when 1  # Corazones de jam (negativos)
+      image_name = "Graphics/Pictures/Contest/negaheart"
+      sprite_width = 16
+      sprite_height = 16
+    when 2  # Estrellas
+      image_name = "Graphics/Pictures/Contest/star"  # Asegúrate de tener esta imagen
+      sprite_width = 16
+      sprite_height = 16
+    else
+      return nil
+    end
+    
+    # Configurar disposición
+    max_per_row = (type == 2) ? 2 : MAXHEART_ROW  # Estrellas en 3 por fila, corazones en 10
+    rows = ((count - 1) / max_per_row) + 1
+    cols = [count, max_per_row].min
+    width = cols * sprite_width
+    height = rows * sprite_height
+    
+    # Crear sprite
+    sprite = Sprite.new(viewport)
+    sprite.bitmap = Bitmap.new(width, height)
+    sprite.x = x
+    sprite.y = y
+    sprite.z = 100003  # Z alto para estar sobre todo
+    
+    # Dibujar imágenes
+    for i in 0...count
+      row = i / max_per_row
+      col = i % max_per_row
+      dest_x = col * sprite_width
+      dest_y = row * sprite_height
+      
+      # Cargar y dibujar cada imagen individualmente
+      heart_bitmap = Bitmap.new(image_name)
+      src_rect = Rect.new(0, 0, sprite_width, sprite_height)
+      sprite.bitmap.blt(dest_x, dest_y, heart_bitmap, src_rect)
+      heart_bitmap.dispose
+    end
+    
+    return sprite
+  end
+  
+  def pbUpdateSimpleHeartSprite(sprite, count, type)
+    return if !sprite || sprite.disposed? || count <= 0
+    
+    # Determinar qué imagen usar según el tipo
+    case type
+    when 0  # Corazones normales
+      image_name = "Graphics/Pictures/Contest/heart"
+      sprite_width = 16
+      sprite_height = 16
+    when 1  # Corazones de jam (negativos)
+      image_name = "Graphics/Pictures/Contest/negaheart"
+      sprite_width = 16
+      sprite_height = 16
+    when 2  # Estrellas
+      image_name = "Graphics/Pictures/Contest/star"
+      sprite_width = 16
+      sprite_height = 16
+    else
+      return
+    end
+    
+    # Configurar disposición
+    max_per_row = (type == 2) ? 2 : MAXHEART_ROW
+    rows = ((count - 1) / max_per_row) + 1
+    cols = [count, max_per_row].min
+    width = cols * sprite_width
+    height = rows * sprite_height
+    
+    # Redimensionar bitmap si es necesario
+    if !sprite.bitmap || sprite.bitmap.width != width || sprite.bitmap.height != height
+      sprite.bitmap.dispose if sprite.bitmap && !sprite.bitmap.disposed?
+      sprite.bitmap = Bitmap.new(width, height)
+    else
+      sprite.bitmap.clear
+    end
+    
+    # Dibujar nuevas imágenes
+    for i in 0...count
+      row = i / max_per_row
+      col = i % max_per_row
+      dest_x = col * sprite_width
+      dest_y = row * sprite_height
+      
+      heart_bitmap = Bitmap.new(image_name)
+      src_rect = Rect.new(0, 0, sprite_width, sprite_height)
+      sprite.bitmap.blt(dest_x, dest_y, heart_bitmap, src_rect)
+      heart_bitmap.dispose
+    end
+  end
+  
+###############################################################################
+# Heart Meter - Indicador animado de puntuación
+###############################################################################
+  def pbShowHeartMeterForAll
+    # Preparar datos para los 4 Pokémon
+    bar_x_start = 390
+    bar_x_end = 502
+    bar_width = bar_x_end - bar_x_start
+    y_base = 32
+    max_hearts_display = 50.0
+    meters = []
+    
+    # Crear los 4 sprites a la vez
+    4.times do |i|
+      pokemon = @pokeorder[i]
+      
+      # Obtener puntuación TOTAL acumulada de todos los turnos
+      case pokemon
+      when @pkmn1 then current_score = @pkmn1total
+      when @pkmn2 then current_score = @pkmn2total
+      when @pkmn3 then current_score = @pkmn3total
+      when @pkmn4 then current_score = @pkmn4total
+      else current_score = 0
+      end
+      
+      # Calcular posición objetivo
+      progress = current_score > 0 ? [current_score.to_f / max_hearts_display, 1.0].min : 0.0
+      target_x = bar_x_start + (bar_width * progress).to_i
+      y_pos = y_base + (i * 96) + 48
+      
+      # Crear sprite (o actualizarlo si ya existe)
+      sprite_name = "heartmeter_#{i}"
+      
+      if !@sprites[sprite_name] || @sprites[sprite_name].disposed?
+        @sprites[sprite_name] = IconSprite.new(bar_x_start, y_pos, @viewport_hearts)
+        @sprites[sprite_name].setBitmap("Graphics/Pictures/Contest/heartmeter")
+      else
+        # Si ya existe, resetear posición inicial
+        @sprites[sprite_name].x = bar_x_start
+        @sprites[sprite_name].opacity = 255
+      end
+      
+      meters.push({
+        :sprite_name => sprite_name,
+        :start_x => bar_x_start,
+        :target_x => target_x,
+        :current_score => current_score
+      })
+    end
+    
+    # Reproducir sonido de experiencia
+    pbSEPlay("Pkmn exp gain")
+    
+    # Animar TODOS los medidores simultáneamente
+    frames = 30  # Animación suave
+    frames.times do |frame|
+      progress = (frame + 1).to_f / frames.to_f
+      meters.each do |meter|
+        current_x = meter[:start_x] + ((meter[:target_x] - meter[:start_x]) * progress).to_i
+        @sprites[meter[:sprite_name]].x = current_x
+      end
+      Graphics.update
+    end
+  end
+  
+  # ---------------------------------------------------------------------------
+  # Limpiar Heart Meters cuando se termine la selección
+  # ---------------------------------------------------------------------------
+  def pbClearHeartMeters
+    4.times do |i|
+      sprite_name = "heartmeter_#{i}"
+      
+      if @sprites[sprite_name] && !@sprites[sprite_name].disposed?
+        # Fade out suave
+        8.times do |j|
+          opacity = 255 - (j * 32)
+          @sprites[sprite_name].opacity = opacity
+          Graphics.update
+        end
+        
+        pbDisposeSprite(@sprites, sprite_name)
+      end
+    end
+  end
+  
+###############################################################################
+# Inicializar sprites de estrellas al inicio del concurso
+###############################################################################
+  def pbInitializeStarSprites
+    # Crear sprites de estrellas para los 4 Pokémon (inicialmente vacíos)
+    4.times do |i|
+      sprite_name = get_star_sprite_name(i)
+      y_pos = (64 - 32)+ (i * 96)  # Posición Y ajustada para coincidir con pbDecreaseStarGraphics
+      
+      # Crear sprite vacío (0 estrellas)
+      if @sprites[sprite_name].nil?
+        sprite = pbCreateSimpleHeartSprite(354, y_pos, 0, 2, @viewport2)
+        @sprites[sprite_name] = sprite if sprite
+        if sprite && sprite.respond_to?("visible")
+          sprite.visible = false  # Ocultar si no hay estrellas
+        end
+      end
+    end
+  end
+  
+  # Actualizar display de estrellas para un Pokémon específico (con posición actual)
+  def pbUpdateStarDisplay(position)
+    # position es la posición actual en el display (0-3), no el índice del Pokémon
+    return if position < 0 || position > 3
+    
+    # Determinar qué Pokémon está en esta posición
+    if @pokeorder.nil? || @pokeorder[position].nil?
+      return
+    end
+    pokemon = @pokeorder[position]
+    
+    # Obtener cantidad de estrellas
+    star_count = 0
+    if pokemon == @pkmn1
+      star_count = @pkmn1stars
+    elsif pokemon == @pkmn2
+      star_count = @pkmn2stars
+    elsif pokemon == @pkmn3
+      star_count = @pkmn3stars
+    elsif pokemon == @pkmn4
+      star_count = @pkmn4stars
+    end
+    
+    sprite_name = get_star_sprite_name(position)
+    y_pos = 64 - 32 + (position * 96)
+    
+    # Mostrar u ocultar según si hay estrellas
+    if star_count > 0
+      # Actualizar o crear sprite
+      if @sprites[sprite_name]
+        pbUpdateSimpleHeartSprite(@sprites[sprite_name], star_count, 2)
+        if @sprites[sprite_name].respond_to?("visible=")
+          @sprites[sprite_name].visible = true
+        end
+      else
+        sprite = pbCreateSimpleHeartSprite(350-8, y_pos, star_count, 2, @viewport2)
+        if sprite
+          @sprites[sprite_name] = sprite
+          if sprite.respond_to?("visible=")
+            sprite.visible = true
+          end
+        end
+      end
+    else
+      # Ocultar si no hay estrellas
+      if @sprites[sprite_name] && @sprites[sprite_name].respond_to?("visible=")
+        @sprites[sprite_name].visible = false
+      end
+    end
+  end
+  
+  # Actualizar TODAS las estrellas después de cambiar el orden
+  def pbUpdateAllStars
+    if @pokeorder.nil? || @pokeorder.empty?
+      return
+    end
+    4.times do |position|
+      pbUpdateStarDisplay(position)
+    end
+  end
+  
+###############################################################################
+# Display Pokemon Graphics
+###############################################################################
+  def pbDisplayPokemonWithAnimation(index)
+    # Nombre del sprite basado en el índice
+    sprite_name = "pokemon#{index + 1}"
+    # Crear sprite si no existe
+    if !@sprites[sprite_name] || @sprites[sprite_name].disposed?
+      @sprites[sprite_name] = PokemonSprite.new(@viewport)
+      @sprites[sprite_name].setPokemonBitmap(@pokeorder[index], true)
+      @sprites[sprite_name].mirror = true
+      pbPositionPokemonSprite(@sprites[sprite_name],POKEMON_SPRITE_START_X,POKEMON_SPRITE_Y)
+    end
+    # Animación de entrada desde la derecha
+    animate_sprite_entrance(sprite_name)
+    if @pokeorder[index].isShiny?
+      pbCommonAnimation("Shiny",@pokeorder[index],@pokeorder[index])
+    end
+  end
+
+  def animate_sprite_entrance(sprite_name)
+    return unless @sprites[sprite_name] && !@sprites[sprite_name].disposed?
+    sprite = @sprites[sprite_name]
+    start_x = sprite.x
+    target_x = POKEMON_SPRITE_TARGET_X
+    # Calcular movimiento por paso
+    move_per_step = (start_x - target_x) / ANIMATION_STEPS.to_f
+    ANIMATION_STEPS.times do |i|
+      # Calcular nueva posición con easing (suavizado)
+      progress = i.to_f / ANIMATION_STEPS
+      # Easing cuadrático para entrada más natural
+      eased_progress = 1 - (1 - progress) * (1 - progress)
+      
+      new_x = start_x - (move_per_step * ANIMATION_STEPS * eased_progress)
+      sprite.x = new_x.to_i
+      
+      # Actualizar gráficos
+      Graphics.update
+      # Pequeña pausa para controlar velocidad
+      ANIMATION_DELAY.times { Graphics.update }
+    end
+    # Asegurar posición final exacta
+    sprite.x = target_x
+    Graphics.update
+  end
+  
+  def animate_sprite_exit(sprite_name)
+    return unless @sprites[sprite_name] && !@sprites[sprite_name].disposed?
+    
+    sprite = @sprites[sprite_name]
+    start_x = sprite.x
+    target_x = -200  # Fuera de pantalla a la izquierda
+    
+    # Calcular movimiento por paso
+    move_per_step = (target_x - start_x) / ANIMATION_STEPS.to_f
+    
+    ANIMATION_STEPS.times do |i|
+      # Calcular nueva posición con easing
+      progress = i.to_f / ANIMATION_STEPS
+      eased_progress = progress * progress  # Easing cuadrático para salida
+      
+      new_x = start_x + (move_per_step * ANIMATION_STEPS * eased_progress)
+      sprite.x = new_x.to_i
+      
+      # Actualizar gráficos
+      Graphics.update
+      ANIMATION_DELAY.times { Graphics.update }
+    end
+    
+    # Asegurar posición final y ocultar
+    sprite.x = target_x
+    Graphics.update
+  end
+  
+  def pbDisposePokemonSpriteWithAnimation(index)
+    sprite_name = "pokemon#{index + 1}"
+    
+    # Animación de salida si existe
+    if @sprites[sprite_name] && !@sprites[sprite_name].disposed?
+      animate_sprite_exit(sprite_name)
+    end
+    
+    # Limpiar sprite
+    pbDisposeSprite(@sprites, sprite_name)
+  end
+  
+  
+  ###############################################################################
+  # Results Scene
+  ###############################################################################
+  def pbResultsScene
+    pbBGMPlay("ORAS 084 Results Announcement")
+    # Inicializar colores en tiempo de ejecución
+    @prelim_bar_color = PRELIM_BAR_COLOR
+    @stars_bar_color = STARS_BAR_COLOR
+    @round_bar_color = ROUND_BAR_COLOR
+    calculate_max_scores # Calcular puntuaciones máximas reales para escalar correctamente
+    
+    # Crear viewport especial para resultados
+    @viewport_results = Viewport.new(0, 0, Graphics.width, Graphics.height)
+    @viewport_results.z = 100002
+    # Fondo de resultados
+    @sprites["results_bg"] = IconSprite.new(0, 0, @viewport_results)
+    @sprites["results_bg"].setBitmap("Graphics/Pictures/Contest/resultsbg")
+    
+    @results_data = pbPrepareResultsData # Preparar datos
+    # Una sola capa para todas las barras
+    @sprites["all_bars"] = BitmapSprite.new(Graphics.width, Graphics.height, @viewport_results)
+    # Variables para controlar la posición de cada fase
+    @current_bar_end_x = RESULTS_BAR_START_X  # Donde termina la última barra dibujada
+    pbSetupResultsDisplay # Mostrar pantalla inicial
+    # Animación de resultados por fases
+    pbShowPreliminaryResults
+    pbWait(30)
+    pbShowRoundResults(1, @roundonetotals, "Primera Ronda")
+    pbWait(20)
+    pbShowRoundResults(2, @roundtwototals, "Segunda Ronda")
+    pbWait(20)
+    pbShowRoundResults(3, @roundthreetotals, "Tercera Ronda")
+    pbWait(20)
+    pbShowRoundResults(4, @roundfourtotals, "Cuarta Ronda")
+    pbWait(20)
+    pbShowRoundResults(5, @roundfivetotals, "Quinta Ronda")
+    #pbWait(20)
+    #pbShowStarsBonus #Esto no iba así en ORAS, wopps.
+    pbWait(30)
+    pbShowFinalResults
+  end
+  
+  # ---------------------------------------------------------------------------
+  # Calcular puntuaciones máximas reales
+  # ---------------------------------------------------------------------------
+  def calculate_max_scores
+    # Preliminares: máximo de @prelim1-4
+    @max_prelim = [@prelim1, @prelim2, @prelim3, @prelim4].max.to_f
+    
+    # Rondas: máximo de la suma de todas las rondas por Pokémon
+    round_totals = []
+    4.times do |i|
+      total = @roundonetotals[i] + @roundtwototals[i] + @roundthreetotals[i] + 
+              @roundfourtotals[i] + @roundfivetotals[i]
+      round_totals.push(total)
+    end
+    @max_rounds = round_totals.max.to_f
+    
+    # Estrellas: máximo de @pkmn1stars-4 (0-6 estrellas)
+    @max_stars = [@pkmn1stars, @pkmn2stars, @pkmn3stars, @pkmn4stars].max.to_f
+    
+    # Puntuación total máxima estimada (para escalar al ancho máximo)
+    @max_total_score = (@max_prelim * 1.5) + (@max_rounds * 1.5) + (@max_stars * 10)
+    
+    # Si el máximo es muy pequeño, usar valores por defecto
+    if @max_prelim <= 0
+      @max_prelim = 50.0  # Valor por defecto
+    end
+    if @max_rounds <= 0
+      @max_rounds = 150.0  # Valor por defecto
+    end
+    if @max_stars <= 0
+      @max_stars = 6.0  # Valor por defecto
+    end
+    if @max_total_score <= 0
+      @max_total_score = 300.0  # Valor por defecto
+    end
+    
+    # Ajustar proporciones según los máximos reales
+    @prelim_weight = (@max_prelim * 1.5) / @max_total_score
+    @rounds_weight = (@max_rounds * 1.5) / @max_total_score
+    @stars_weight = (@max_stars * 10) / @max_total_score
+    
+    # Normalizar si la suma excede 1.0
+    total_weight = @prelim_weight + @rounds_weight + @stars_weight
+    if total_weight > 1.0
+      @prelim_weight /= total_weight
+      @rounds_weight /= total_weight
+      @stars_weight /= total_weight
+    end
+    
+    # Anchos máximos para cada segmento
+    @max_prelim_width = (RESULTS_BAR_MAX_WIDTH * @prelim_weight).floor
+    @max_rounds_width = (RESULTS_BAR_MAX_WIDTH * @rounds_weight).floor
+    @max_stars_width = (RESULTS_BAR_MAX_WIDTH * @stars_weight).floor
+    
+    # Ajustar para asegurar que la suma sea exactamente RESULTS_BAR_MAX_WIDTH
+    total_width = @max_prelim_width + @max_rounds_width + @max_stars_width
+    if total_width < RESULTS_BAR_MAX_WIDTH
+      @max_stars_width += (RESULTS_BAR_MAX_WIDTH - total_width)
+    elsif total_width > RESULTS_BAR_MAX_WIDTH
+      @max_stars_width -= (total_width - RESULTS_BAR_MAX_WIDTH)
+    end
+  end
+  # ---------------------------------------------------------------------------
+  # Preparar datos de resultados
+  # ---------------------------------------------------------------------------
+  def pbPrepareResultsData
+    data = []
+    
+    # Datos para cada Pokémon
+    pkmn_array = [@pkmn1, @pkmn2, @pkmn3, @pkmn4]
+    prelim_array = [@prelim1/2, @prelim2/2, @prelim3/2, @prelim4/2]
+    stars_array = [@pkmn1stars, @pkmn2stars, @pkmn3stars, @pkmn4stars]
+    total_array = [@pkmn1total, @pkmn2total, @pkmn3total, @pkmn4total]
+    
+    4.times do |i|
+      # Calcular puntuación total de rondas para este Pokémon
+      rounds_total = @roundonetotals[i] + @roundtwototals[i] + @roundthreetotals[i] + 
+                     @roundfourtotals[i] + @roundfivetotals[i]
+      
+      data.push({
+        :pokemon => pkmn_array[i],
+        :prelim => prelim_array[i],
+        :stars => stars_array[i],
+        :rounds_total => rounds_total,
+        :total => total_array[i],
+        :prelim_width => 0,    # Ancho de la barra preliminar
+        :round_width => 0,     # Ancho acumulado de rondas
+        :stars_width => 0,     # Ancho de estrellas
+        :total_width => 0,     # Ancho total
+        :display_score => 0,
+        :current_prelim_score => 0,
+        :current_round_score => 0,
+        :current_stars_score => 0
+      })
+    end
+    
+    return data
+  end
+  
+  # ---------------------------------------------------------------------------
+  # Configurar display inicial
+  # ---------------------------------------------------------------------------
+  def pbSetupResultsDisplay
+    # Crear sprites de iconos de Pokémon en los cuadros blancos
+    4.times do |i|
+      sprite_name = "results_icon_" + i.to_s
+      @sprites[sprite_name] = PokemonIconSprite.new(@results_data[i][:pokemon], @viewport_results)
+      @sprites[sprite_name].x = ICON_BOX_X + 16
+      @sprites[sprite_name].y = (i * RESULTS_BAR_SPACING) + ICON_BOX_Y_OFFSET
+    end
+    
+    # Crear overlay para puntuaciones
+    @sprites["results_scores"] = BitmapSprite.new(Graphics.width, Graphics.height, @viewport_results)
+    
+    # Dibujar fondo negro para todas las barras
+    overlay = @sprites["all_bars"].bitmap
+    4.times do |i|
+      y_pos = RESULTS_BAR_Y_BASE + (i * RESULTS_BAR_SPACING) + 16
+      overlay.fill_rect(RESULTS_BAR_START_X, y_pos, RESULTS_BAR_MAX_WIDTH, RESULTS_BAR_HEIGHT, Color.new(0, 0, 0))
+    end
+    
+    # Inicializar posiciones
+    pbUpdatePositions
+  end
+  
+  # ---------------------------------------------------------------------------
+  # Actualizar posiciones en los cuadros verdes
+  # ---------------------------------------------------------------------------
+  def pbUpdatePositions
+    # Limpiar sprites de posiciones anteriores
+    4.times do |i|
+      sprite_name = "position_" + i.to_s
+      if @sprites[sprite_name]
+        pbDisposeSprite(@sprites, sprite_name)
+      end
+    end
+    
+    # Ordenar por puntuación actual
+    sorted_indices = []
+    @results_data.each_with_index do |data, i|
+      sorted_indices.push([data[:display_score], i])
+    end
+    sorted_indices.sort! { |a, b| b[0] <=> a[0] }
+    sorted_indices = sorted_indices.map { |score, i| i }
+    
+    # Asignar posiciones
+    4.times do |display_order|
+      actual_index = sorted_indices[display_order]
+      position = display_order + 1
+      
+      y_pos = POSITION_BOX_Y + (actual_index * RESULTS_BAR_SPACING) + 8
+      
+      # Crear sprite de posición
+      sprite_name = "position_" + actual_index.to_s
+      @sprites[sprite_name] = IconSprite.new(POSITION_BOX_X + 8, y_pos, @viewport_results)
+      
+      # Cargar imagen de posición correspondiente
+      position_file = "Graphics/Pictures/Contest/pos_" + position.to_s
+      if pbResolveBitmap(position_file)
+        @sprites[sprite_name].setBitmap(position_file)
+      else
+        # Fallback: crear texto
+        @sprites[sprite_name].dispose if @sprites[sprite_name]
+        @sprites[sprite_name] = BitmapSprite.new(32, 32, @viewport_results)
+        @sprites[sprite_name].x = POSITION_BOX_X + 8
+        @sprites[sprite_name].y = y_pos
+        bitmap = @sprites[sprite_name].bitmap
+        pbSetSystemFont(bitmap)
+        text_color = Color.new(255, 255, 255)
+        shadow_color = Color.new(0, 0, 0)
+        position_text = position.to_s + "º"
+        pbDrawTextPositions(bitmap, [
+          [position_text, 16, 8, 2, text_color, shadow_color]
+        ])
+      end
+    end
+  end
+  
+  # ---------------------------------------------------------------------------
+  # Mostrar resultados preliminares
+  # ---------------------------------------------------------------------------
+  def pbShowPreliminaryResults
+    pbShowPhaseTitle("Evaluación Preliminar")
+    
+    4.times do |i|
+      points_to_add = (@results_data[i][:prelim] * 1.5).floor
+      pbAnimatePrelimScore(i, points_to_add)
+      pbWait(5)
+    end
+    
+    # Guardar donde terminan las barras preliminares
+    @prelim_end_x = @current_bar_end_x
+  end
+  
+  # ---------------------------------------------------------------------------
+  # Animar puntuación preliminar
+  # ---------------------------------------------------------------------------
+  def pbAnimatePrelimScore(index, points)
+    return if points <= 0
+    
+    data = @results_data[index]
+    
+    # Calcular ancho de barra proporcional al máximo
+    target_width = ((points.to_f / (@max_prelim * 1.5)) * @max_prelim_width).floor
+    
+    # Asegurar que no exceda el ancho máximo
+    target_width = @max_prelim_width if target_width > @max_prelim_width
+    
+    # Animar el crecimiento de la barra
+    frames = [target_width / 2, 30].min
+    frames = 10 if frames < 10
+    
+    frames.times do |frame|
+      progress = (frame + 1).to_f / frames.to_f
+      current_width = (target_width * progress).floor
+      current_score = (points * progress).floor
+      
+      data[:prelim_width] = current_width
+      data[:total_width] = current_width
+      data[:current_prelim_score] = current_score
+      data[:display_score] = current_score
+      
+      pbDrawBarSegment(index, RESULTS_BAR_START_X, current_width, @prelim_bar_color)
+      pbUpdatePositions
+      Graphics.update
+    end
+    
+    # Asegurar valor final
+    data[:prelim_width] = target_width
+    data[:total_width] = target_width
+    data[:current_prelim_score] = points
+    data[:display_score] = points
+    pbDrawBarSegment(index, RESULTS_BAR_START_X, target_width, @prelim_bar_color)
+    pbUpdatePositions
+    
+    # Actualizar posición final
+    @current_bar_end_x = RESULTS_BAR_START_X + target_width
+  end
+  
+  # ---------------------------------------------------------------------------
+  # Mostrar resultados de ronda
+  # ---------------------------------------------------------------------------
+  def pbShowRoundResults(round_num, totals, title)
+    pbShowPhaseTitle(title)
+    
+    4.times do |i|
+      points_to_add = (totals[i] * 1.5).floor
+      pbAnimateRoundScore(i, points_to_add)
+      pbWait(5)
+    end
+  end
+  
+  # ---------------------------------------------------------------------------
+  # Animar puntuación de rondas (continúa después de preliminares)
+  # ---------------------------------------------------------------------------
+  def pbAnimateRoundScore(index, points)
+    return if points <= 0
+    
+    data = @results_data[index]
+    start_width = data[:total_width]
+    start_score = data[:display_score]
+    
+    # Calcular ancho adicional para esta ronda proporcional al máximo
+    target_additional_width = ((points.to_f / (@max_rounds * 1.5)) * @max_rounds_width).floor
+    
+    # Asegurar que no exceda el espacio disponible
+    available_width = RESULTS_BAR_MAX_WIDTH - start_width
+    target_additional_width = available_width if target_additional_width > available_width
+    
+    target_total_width = start_width + target_additional_width
+    
+    # Animar el crecimiento de la barra
+    frames = [target_additional_width / 2, 30].min
+    frames = 10 if frames < 10
+    
+    # CRÍTICO: Guardar el width inicial de rondas para acumular correctamente
+    initial_round_width = data[:round_width]
+    
+    frames.times do |frame|
+      progress = (frame + 1).to_f / frames.to_f
+      current_additional_width = (target_additional_width * progress).floor
+      current_total_width = start_width + current_additional_width
+      current_additional_score = (points * progress).floor
+      
+      # Actualizar width acumulativo (sumar al previo, no sobrescribir)
+      data[:round_width] = initial_round_width + current_additional_width
+      data[:total_width] = current_total_width
+      data[:display_score] = start_score + current_additional_score
+      
+      # Dibujar desde donde terminó la ronda anterior
+      pbDrawBarSegment(index, RESULTS_BAR_START_X + data[:prelim_width] + initial_round_width, current_additional_width, @round_bar_color)
+      pbUpdatePositions
+      Graphics.update
+    end
+    
+    # Asegurar valores finales
+    data[:round_width] = initial_round_width + target_additional_width
+    data[:total_width] = target_total_width
+    data[:current_round_score] = data[:current_round_score] + points
+    data[:display_score] = start_score + points
+    pbDrawBarSegment(index, RESULTS_BAR_START_X + data[:prelim_width] + initial_round_width, target_additional_width, @round_bar_color)
+    pbUpdatePositions
+    
+    # Actualizar posición final
+    @current_bar_end_x = RESULTS_BAR_START_X + target_total_width
+  end
+
+  # ---------------------------------------------------------------------------
+  # Mostrar bonus de estrellas
+  # ---------------------------------------------------------------------------
+  def pbShowStarsBonus
+    pbShowPhaseTitle("Estrellas Ganadas")
+    
+    pbWait(15)
+    
+    # Animar bonus de estrellas
+    4.times do |i|
+      points_to_add = @results_data[i][:stars] * 10
+      pbAnimateStarsScore(i, points_to_add)
+      pbWait(5)
+    end
+  end
+  
+  # ---------------------------------------------------------------------------
+  # Animar puntuación de estrellas (continúa después de rondas)
+  # ---------------------------------------------------------------------------
+  def pbAnimateStarsScore(index, points)
+    return if points <= 0
+    
+    data = @results_data[index]
+    start_width = data[:total_width]
+    start_score = data[:display_score]
+    
+    # Calcular ancho adicional para estrellas proporcional al máximo
+    target_additional_width = ((points.to_f / (@max_stars * 10)) * @max_stars_width).floor
+    
+    # Asegurar que no exceda el espacio disponible
+    available_width = RESULTS_BAR_MAX_WIDTH - start_width
+    target_additional_width = available_width if target_additional_width > available_width
+    
+    target_total_width = start_width + target_additional_width
+    
+    # Animar el crecimiento de la barra
+    frames = [target_additional_width / 2, 30].min
+    frames = 10 if frames < 10
+    
+    frames.times do |frame|
+      progress = (frame + 1).to_f / frames.to_f
+      current_additional_width = (target_additional_width * progress).floor
+      current_total_width = start_width + current_additional_width
+      current_additional_score = (points * progress).floor
+      
+      data[:stars_width] = current_additional_width
+      data[:total_width] = current_total_width
+      data[:current_stars_score] = current_additional_score
+      data[:display_score] = start_score + current_additional_score
+      
+      # Dibujar solo el segmento nuevo (continúa desde donde terminaron las rondas)
+      start_x = RESULTS_BAR_START_X + data[:prelim_width] + data[:round_width]
+      pbDrawBarSegment(index, start_x, current_additional_width, @stars_bar_color)
+      pbUpdatePositions
+      Graphics.update
+    end
+    
+    # Asegurar valor final
+    data[:stars_width] = target_additional_width
+    data[:total_width] = target_total_width
+    data[:current_stars_score] = points
+    data[:display_score] = start_score + points
+    start_x = RESULTS_BAR_START_X + data[:prelim_width] + data[:round_width]
+    pbDrawBarSegment(index, start_x, target_additional_width, @stars_bar_color)
+    pbUpdatePositions
+    
+    # Actualizar posición final
+    @current_bar_end_x = RESULTS_BAR_START_X + target_total_width
+  end
+  
+  # ---------------------------------------------------------------------------
+  # Dibujar segmento de barra
+  # ---------------------------------------------------------------------------
+  def pbDrawBarSegment(index, start_x, width, color)
+    overlay = @sprites["all_bars"].bitmap
+    y_pos = RESULTS_BAR_Y_BASE + (index * RESULTS_BAR_SPACING) + 16
+    
+    # Limpiar solo el área que vamos a dibujar
+    overlay.fill_rect(start_x, y_pos, width, RESULTS_BAR_HEIGHT, Color.new(0, 0, 0))
+    
+    # Dibujar barra
+    if width > 0
+      width.times do |x|
+        #progress = x.to_f / width.to_f
+        #shade = 1.0 - (progress * 0.3)
+        #r = (color.red * shade).floor
+        #g = (color.green * shade).floor
+        #b = (color.blue * shade).floor
+        #pixel_color = Color.new(r, g, b)
+        pixel_color = color
+        overlay.fill_rect(start_x + x, y_pos, 1, RESULTS_BAR_HEIGHT, pixel_color)
+      end
+    end
+  end
+  
+  # ---------------------------------------------------------------------------
+  # Mostrar título de fase
+  # ---------------------------------------------------------------------------
+  def pbShowPhaseTitle(title)
+    # Limpiar título anterior
+    if @sprites["phase_title"]
+      pbDisposeSprite(@sprites, "phase_title")
+    end
+    @sprites["phase_title"] = BitmapSprite.new(Graphics.width, 50, @viewport_results)
+    pbSetSystemFont(@sprites["phase_title"].bitmap)
+    color = pbGetContestColor
+    shadow = Color.new(136, 168, 208)
+    pbDrawTextPositions(@sprites["phase_title"].bitmap, [
+      [title, Graphics.width / 2, 10, 2, color, shadow]
+    ])
+    pbWait(15)
+  end
+  
+  # ---------------------------------------------------------------------------
+  # Mostrar resultados finales
+  # ---------------------------------------------------------------------------
+  def pbShowFinalResults
+    # Ordenar por puntuación
+    winner_data = @results_data.max do |a, b|
+      a[:display_score] <=> b[:display_score]
+    end
+    winner = winner_data[:pokemon] # Determinar ganador
+    winner_index = @results_data.index(winner_data) # Efecto de destello en ganador
+    pbCelebrationScene(winner)
+    if winner == @pkmn1 # Dar cinta si el jugador ganó
+      if $PokemonGlobal.contestPlayerPokemon
+        player_pokemon = $Trainer.party[$PokemonGlobal.contestPlayerPokemon]
+        if player_pokemon && !player_pokemon.hasRibbon?(@ribbonnum)
+          player_pokemon.giveRibbon(@ribbonnum)
+        end
+      end
+    end
+    pbCleanupResultsScreen
+  end
+  
+  # ---------------------------------------------------------------------------
+  # Destacar al ganador
+  # ---------------------------------------------------------------------------
+  def pbHighlightWinner(index)
+    y_pos = RESULTS_BAR_Y_BASE + (index * RESULTS_BAR_SPACING)
+    # Crear sprite de destello
+    @sprites["winner_flash"] = BitmapSprite.new(Graphics.width, RESULTS_BAR_SPACING, @viewport_results)
+    @sprites["winner_flash"].y = y_pos
+    # Animar destello
+    6.times do |i|
+      if i % 2 == 0
+        @sprites["winner_flash"].bitmap.fill_rect(0, 0, Graphics.width, RESULTS_BAR_SPACING, Color.new(255, 255, 0, 100))
+      else
+        @sprites["winner_flash"].bitmap.clear
+      end
+      pbWait(8)
+      Graphics.update
+    end
+  end
+  
+  # ---------------------------------------------------------------------------
+  # Limpiar pantalla de resultados
+  # ---------------------------------------------------------------------------
+  def pbCleanupResultsScreen
+    # Limpiar sprites
+    sprites_to_remove = [
+      "results_bg", "all_bars", "results_scores", "phase_title", "winner_flash"
+    ]
+    4.times do |i|
+      sprites_to_remove.push("results_icon_" + i.to_s)
+      sprites_to_remove.push("position_" + i.to_s)
+    end
+    sprites_to_remove.each do |sprite_name|
+      if @sprites[sprite_name]
+        pbDisposeSprite(@sprites, sprite_name)
+      end
+    end
+    if @viewport_results
+      @viewport_results.dispose
+    end
+    Input.update
+  end
+  
+
+###############################################################################
+# Pantalla de celebración para el ganador
+###############################################################################
+  def pbCelebrationScene(winner_pokemon)
+    pbBGMPlay("ORAS 085 Contest Winner")
+    # Crear viewport para la celebración
+    @viewport_celebration = Viewport.new(0, 0, Graphics.width, Graphics.height)
+    @viewport_celebration.z = 100005
+        
+    # Barra superior con información
+    @sprites["celebration_header"] = BitmapSprite.new(Graphics.width, 96, @viewport_celebration)
+    pbDrawCelebrationHeader(@sprites["celebration_header"].bitmap, winner_pokemon)
+    
+    # Fondo del escenario
+    @sprites["celebration_bg"] = IconSprite.new(0, 0, @viewport_celebration)
+    @sprites["celebration_bg"].setBitmap("Graphics/Pictures/Contest/celebration_bg")
+    
+    # Mensaje de felicitación
+    @sprites["celebration_message"] = BitmapSprite.new(Graphics.width, 96, @viewport_celebration)
+    @sprites["celebration_message"].y = Graphics.height - @sprites["celebration_message"].bitmap.height
+    pbDrawCelebrationMessage(@sprites["celebration_message"].bitmap, winner_pokemon)
+    
+    # Sprite del Pokémon ganador
+    @sprites["winner_pokemon"] = PokemonSprite.new(@viewport_celebration)
+    @sprites["winner_pokemon"].setPokemonBitmap(winner_pokemon, false)
+    
+    # Centrar el Pokémon
+    poke_x = (Graphics.width / 2) - (@sprites["winner_pokemon"].bitmap.width / 2)
+    poke_y = (Graphics.height / 2) - (@sprites["winner_pokemon"].bitmap.height / 2) - 16
+    @sprites["winner_pokemon"].x = poke_x
+    @sprites["winner_pokemon"].y = poke_y
+    
+    
+    # Inicializar sistema de confeti
+    @confeti_particles = []
+    pbInitializeConfeti
+    
+    # Animación de entrada
+    pbCelebrationEntrance
+    
+    # Loop principal de celebración
+    pbCelebrationLoop
+    
+    # Limpieza
+    pbCleanupCelebration
+  end
+  
+  # ---------------------------------------------------------------------------
+  # Dibujar fondo del escenario
+  # ---------------------------------------------------------------------------
+  def pbDrawCelebrationBackground(bitmap)
+    # Fondo oscuro
+    bitmap.fill_rect(0, 0, Graphics.width, Graphics.height, Color.new(40, 40, 60))
+    
+    # Pasarela amarilla en el centro
+    stage_width = 200
+    stage_x = (Graphics.width - stage_width) / 2
+    stage_color = Color.new(255, 235, 80)
+    
+    # Crear efecto de perspectiva
+    for y in 0...Graphics.height
+      progress = y.to_f / Graphics.height.to_f
+      current_width = stage_width + (progress * 100)
+      current_x = (Graphics.width - current_width) / 2
+      
+      # Alternar tonos para dar textura
+      if (y / 4) % 2 == 0
+        color = Color.new(255, 235, 80)
+      else
+        color = Color.new(245, 225, 70)
+      end
+      
+      bitmap.fill_rect(current_x, y, current_width, 1, color)
+    end
+  end
+  
+  # ---------------------------------------------------------------------------
+  # Dibujar encabezado con info del Pokémon
+  # ---------------------------------------------------------------------------
+  def pbDrawCelebrationHeader(bitmap, pokemon)
+    # Fondo rosa/degradado
+    for y in 0...96
+      progress = y.to_f / 96.to_f
+      r = 255 - (progress * 50).to_i
+      g = 180 - (progress * 50).to_i
+      b = 200 - (progress * 50).to_i
+      color = Color.new(r, g, b, 200)
+      bitmap.fill_rect(0, y, Graphics.width, 1, color)
+    end
+    
+    # Nombre del Pokémon
+    pbSetSystemFont(bitmap)
+    name = pokemon.name
+    species_name = PBSpecies.getName(pokemon.species)
+    
+    text_color = Color.new(255, 255, 255)
+    shadow_color = Color.new(100, 50, 100)
+    
+    # Título
+    pbDrawTextPositions(bitmap, [
+      [_INTL("¡GANADOR!"), Graphics.width / 2, 5, 2, text_color, shadow_color],
+      [name, Graphics.width / 2, 30, 2, text_color, shadow_color],
+      [pokemon.ot, Graphics.width / 2, 55, 2, Color.new(255, 235, 80), shadow_color]
+    ])
+  end
+  
+  # ---------------------------------------------------------------------------
+  # Dibujar mensaje de felicitación
+  # ---------------------------------------------------------------------------
+  def pbDrawCelebrationMessage(bitmap, pokemon)
+    # Fondo semi-transparente
+    bitmap.fill_rect(0, 0, Graphics.width, 96, Color.new(0, 0, 0, 150))
+    
+    pbSetSystemFont(bitmap)
+    
+    message = _INTL("¡{1} ha ganado el concurso!", pokemon.name)
+    text_color = Color.new(255, 255, 255)
+    shadow_color = Color.new(0, 0, 0)
+    
+    pbDrawTextPositions(bitmap, [
+      [message, Graphics.width / 2, 20, 2, text_color, shadow_color]
+    ])
+  end
+  
+  # ---------------------------------------------------------------------------
+  # Inicializar sistema de confeti
+  # ---------------------------------------------------------------------------
+  def pbInitializeConfeti
+    # Intentar cargar sprite sheet de confeti
+    begin
+      @confeti_bitmap = AnimatedBitmap.new("Graphics/Pictures/Contest/Confeti")
+      @confeti_frame_width = 16
+      @confeti_frame_height = 16
+      @confeti_total_frames = 17
+      @confeti_enabled = true
+    rescue
+      # Si no existe el archivo, desactivar confeti
+      @confeti_enabled = false
+      pbMessage("No se encontró el sprite sheet de confeti. Continuando sin confeti.")
+      return
+    end
+    
+    # Crear partículas iniciales solo si el confeti está habilitado
+    if @confeti_enabled
+      30.times do
+        pbAddConfetiParticle
+      end
+    end
+  end
+  
+  # ---------------------------------------------------------------------------
+  # Añadir una nueva partícula de confeti
+  # ---------------------------------------------------------------------------
+  def pbAddConfetiParticle
+    return unless @confeti_enabled
+    
+    particle = {
+      :sprite => Sprite.new(@viewport_celebration),
+      :x => rand(Graphics.width),
+      :y => -rand(50),
+      :speed_y => 2 + rand(3),
+      :speed_x => -2 + rand(5),
+      :rotation => rand(360),
+      :rotation_speed => -5 + rand(11),
+      :frame => rand(@confeti_total_frames),
+      :frame_counter => 0
+    }
+    
+    # Crear bitmap para esta partícula
+    particle[:sprite].bitmap = Bitmap.new(@confeti_frame_width, @confeti_frame_height)
+    particle[:sprite].ox = @confeti_frame_width / 2
+    particle[:sprite].oy = @confeti_frame_height / 2
+    
+    # Copiar frame del sprite sheet
+    pbUpdateConfetiFrame(particle)
+    
+    @confeti_particles.push(particle)
+  end
+  
+  # ---------------------------------------------------------------------------
+  # Actualizar frame de confeti
+  # ---------------------------------------------------------------------------
+  def pbUpdateConfetiFrame(particle)
+    return unless @confeti_enabled
+    return unless @confeti_bitmap && @confeti_bitmap.bitmap
+    
+    src_rect = Rect.new(
+      (particle[:frame] * @confeti_frame_width) % @confeti_bitmap.width,
+      ((particle[:frame] * @confeti_frame_width) / @confeti_bitmap.width) * @confeti_frame_height,
+      @confeti_frame_width,
+      @confeti_frame_height
+    )
+    
+    particle[:sprite].bitmap.clear
+    particle[:sprite].bitmap.blt(0, 0, @confeti_bitmap.bitmap, src_rect)
+  end
+  
+  # ---------------------------------------------------------------------------
+  # Actualizar confeti
+  # ---------------------------------------------------------------------------
+  def pbUpdateConfeti
+    return unless @confeti_enabled
+    
+    @confeti_particles.each do |particle|
+      # Mover
+      particle[:y] += particle[:speed_y]
+      particle[:x] += particle[:speed_x]
+      
+      # Rotar
+      particle[:rotation] += particle[:rotation_speed]
+      particle[:rotation] %= 360
+      
+      # Animar frames
+      particle[:frame_counter] += 1
+      if particle[:frame_counter] >= 6
+        particle[:frame_counter] = 0
+        particle[:frame] = (particle[:frame] + 1) % @confeti_total_frames
+        pbUpdateConfetiFrame(particle)
+      end
+      
+      # Actualizar sprite
+      particle[:sprite].x = particle[:x]
+      particle[:sprite].y = particle[:y]
+      particle[:sprite].angle = particle[:rotation]
+      
+      # Reiniciar si sale de la pantalla
+      if particle[:y] > Graphics.height + 20
+        particle[:y] = -20
+        particle[:x] = rand(Graphics.width)
+      end
+      
+      if particle[:x] < -20
+        particle[:x] = Graphics.width + 20
+      elsif particle[:x] > Graphics.width + 20
+        particle[:x] = -20
+      end
+    end
+  end
+  
+  # ---------------------------------------------------------------------------
+  # Animación de entrada
+  # ---------------------------------------------------------------------------
+  def pbCelebrationEntrance
+    # Fade in
+    10.times do |i|
+      @viewport_celebration.color = Color.new(0, 0, 0, 255 - (i * 25))
+      Graphics.update
+    end
+    
+    # Pokémon aparece desde abajo
+    target_y = @sprites["winner_pokemon"].y
+    @sprites["winner_pokemon"].y = Graphics.height
+    
+    20.times do |i|
+      progress = i.to_f / 20.0
+      @sprites["winner_pokemon"].y = Graphics.height - (Graphics.height - target_y) * progress
+      pbUpdateConfeti
+      Graphics.update
+    end
+    
+    @sprites["winner_pokemon"].y = target_y
+    
+    # Pequeño rebote
+    5.times do |i|
+      @sprites["winner_pokemon"].y = target_y - 10 + (i * 2)
+      pbUpdateConfeti
+      Graphics.update
+      pbWait(2)
+    end
+    
+    @sprites["winner_pokemon"].y = target_y
+  end
+  
+  # ---------------------------------------------------------------------------
+  # Loop principal de celebración
+  # ---------------------------------------------------------------------------
+  def pbCelebrationLoop
+    frame_count = 0
+    poke_y_base = @sprites["winner_pokemon"].y
+    
+    loop do
+      Graphics.update
+      Input.update
+      
+      # Animación suave del Pokémon (flotando)
+      frame_count += 1
+      offset = Math.sin(frame_count * 0.05) * 3
+      @sprites["winner_pokemon"].y = poke_y_base + offset.to_i
+      
+      # Actualizar confeti
+      pbUpdateConfeti
+      
+      # Añadir nuevas partículas ocasionalmente
+      if frame_count % 10 == 0 && @confeti_particles.length < 40
+        pbAddConfetiParticle
+      end
+      
+      # Salir con input
+      if Input.trigger?(Input::C) || Input.trigger?(Input::B)
+        break
+      end
+    end
+  end
+  
+  # ---------------------------------------------------------------------------
+  # Limpieza de la celebración
+  # ---------------------------------------------------------------------------
+  def pbCleanupCelebration
+    # Fade out
+    10.times do |i|
+      @viewport_celebration.color = Color.new(0, 0, 0, i * 25)
+      pbUpdateConfeti if @confeti_enabled
+      Graphics.update
+    end
+    
+    # Limpiar confeti solo si está habilitado
+    if @confeti_enabled
+      @confeti_particles.each do |particle|
+        particle[:sprite].bitmap.dispose if particle[:sprite].bitmap
+        particle[:sprite].dispose
+      end
+      @confeti_particles.clear
+      
+      @confeti_bitmap.dispose if @confeti_bitmap
+    end
+    
+    # Limpiar sprites
+    ["celebration_bg", "winner_pokemon", "celebration_header", "celebration_message"].each do |sprite_name|
+      if @sprites[sprite_name]
+        pbDisposeSprite(@sprites, sprite_name)
+      end
+    end
+    
+    if @viewport_celebration
+      @viewport_celebration.dispose
+    end
+    
+    Input.update
+  end
+
+
+  def pbShowTransitionIn
+    # Asegurar que el sprite existe
+    pbResetContestMoveEffects
+    pbClearHeartMeters
+    pbInitializeTransitionSprite if !@sprites["transition"]
+    
+    transition = @sprites["transition"]
+    transition.visible = true
+    
+    # Posición inicial: arriba (fuera de pantalla)
+    start_y = -384
+    target_y = 0  # Posición final (centrada)
+    
+    transition.y = start_y
+    transition.opacity = 255  # Opacidad completa
+    
+    # Animación de bajada
+    TRANSITION_DURATION.times do |i|
+      # Calcular posición Y con easing
+      progress = i.to_f / TRANSITION_DURATION
+      # Easing cuadrático para entrada suave
+      eased_progress = 1 - (1 - progress) * (1 - progress)
+      
+      # Nueva posición Y
+      new_y = start_y + (target_y - start_y) * eased_progress
+      transition.y = new_y.to_i
+      
+      # Actualizar gráficos
+      Graphics.update
+      Input.update
+    end
+    
+    # Asegurar posición final exacta
+    transition.y = target_y
+    Graphics.update
+  end
+  
+  def pbShowTransitionOut
+    return unless @sprites["transition"] && @sprites["transition"].visible
+    
+    transition = @sprites["transition"]
+    
+    # Posiciones
+    start_y = transition.y
+    target_y = -384  # Arriba (fuera de pantalla)
+    
+    # Animación de subida
+    TRANSITION_DURATION.times do |i|
+      # Calcular posición Y con easing
+      progress = i.to_f / TRANSITION_DURATION
+      # Easing cuadrático para salida suave
+      eased_progress = progress * progress
+      
+      # Nueva posición Y
+      new_y = start_y + (target_y - start_y) * eased_progress
+      transition.y = new_y.to_i
+      
+      # Actualizar gráficos
+      Graphics.update
+      Input.update
+    end
+    
+    # Asegurar posición final y ocultar
+    transition.y = target_y
+    transition.visible = false
+    Graphics.update
+  end
+  
+  def pbQuickTransition
+    # Transición rápida para debugging
+    pbInitializeTransitionSprite if !@sprites["transition"]
+    
+    transition = @sprites["transition"]
+    
+    # Mostrar brevemente
+    transition.visible = true
+    transition.y = 0  # Posición centrada
+    
+    # Breve pausa
+    10.times do
+      Graphics.update
+      Input.update
+    end
+    
+    # Subir rápidamente
+    5.times do |i|
+      transition.y = -(i * 10)
+      Graphics.update
+    end
+    
+    transition.visible = false
+    transition.y = -384  # Restaurar posición inicial
+    Graphics.update
+  end
+end
+
+###############################################################################
+#################### Animation Stuff Below ###################################
+############## Don't change unless you know what you're doing #################
+###############################################################################
+class ContestPokemonWrapper
+  #Wrapper para hacer que el Pokémon sea compatible con playTiming
+  attr_accessor :pokemon
+  def initialize(pokemon)
+    @pokemon = pokemon
+  end
+end
+
+class PokeContestScene
+  def pbFindAnimation(moveid,userIndex,hitnum)
+    begin
+      move2anim=load_data("Data/move2anim.dat")
+      noflip=false
+      if (userIndex&1)==0   # On player's side
+        anim=move2anim[0][moveid]
+      else                  # On opposing side
+        anim=move2anim[1][moveid]
+        noflip=true if anim
+        anim=move2anim[0][moveid] if !anim
+      end
+      return [anim+hitnum,noflip] if anim
+      # Actual animation not found, get the default animation for the move's type
+      # Animación actual no encontrada, se usa animación por defecto según el tipo del movimiento
+      move=PBMoveData.new(moveid)
+      type=move.type
+
+      # BES-T - ANIMACIONES COHERENTES CON LA CATEGORIA
+      if move.category==0 #FISICOS
+      typedefaultanim=[[:NORMAL,:TACKLE],
+                       [:FIGHTING,:DOUBLEKICK],
+                       [:FLYING,:WINGATTACK],
+                       [:POISON,:POISONJAB],
+                       [:GROUND,:EARTHQUAKE],
+                       [:ROCK,:ROCKTHROW],
+                       [:BUG,:TWINEEDLE],
+                       [:GHOST,:SHADOWCLAW],
+                       [:STEEL,:GYROBALL],
+                       [:FIRE,:FLAMETHROWER],
+                       [:WATER,:AQUAJET],
+                       [:GRASS,:LEAFBLADE],
+                       [:ELECTRIC,:SPARK],
+                       [:PSYCHIC,:ZENHEADBUTT],
+                       [:ICE,:ICEBALL],
+                       [:DRAGON,:DRAGONRUSH],
+                       [:DARK,:PURSUIT],
+                       [:FAIRY,:TACKLE]]
+
+      elsif move.category==1 #ESPECIAL
+      typedefaultanim=[[:NORMAL,:HIDDENPOWER],
+                       [:FIGHTING,:DOUBLEKICK],
+                       [:FLYING,:GUST],
+                       [:POISON,:SLUDGE],
+                       [:GROUND,:EARTHQUAKE],
+                       [:ROCK,:ROCKTHROW],
+                       [:BUG,:BUGBUZZ],
+                       [:GHOST,:SHADOWBALL],
+                       [:STEEL,:MIRRORSHOT],
+                       [:FIRE,:FLAMETHROWER],
+                       [:WATER,:WATERGUN],
+                       [:GRASS,:RAZORLEAF],
+                       [:ELECTRIC,:THUNDERSHOCK],
+                       [:PSYCHIC,:CONFUSION],
+                       [:ICE,:ICEBEAM],
+                       [:DRAGON,:DRAGONRAGE],
+                       [:DARK,:DARKPULSE],
+                       [:FAIRY,:FAIRYWIND]]
+
+      else #ESTADO
+      typedefaultanim=[[:NORMAL,:WORKUP],
+                       [:FIGHTING,:BULKUP],
+                       [:FLYING,:ROOST],
+                       [:POISON,:ACIDARMOR],
+                       [:GROUND,:ROCKPOLISH],
+                       [:ROCK,:ROCKPOLISH],
+                       [:BUG,:POWDER],
+                       [:GHOST,:SHADOWBALL],
+                       [:STEEL,:GYROBALL],
+                       [:FIRE,:BURNUP],
+                       [:WATER,:WITHDRAW],
+                       [:GRASS,:RAZORLEAF],
+                       [:ELECTRIC,:CHARGE],
+                       [:PSYCHIC,:CALMMIND],
+                       [:ICE,:HAZE],
+                       [:DRAGON,:DRAGONDANCE],
+                       [:DARK,:QUASH],
+                       [:FAIRY,:AROMATICMIST]]
+
+      end
+
+      for i in typedefaultanim
+        if isConst?(type,PBTypes,i[0]) && hasConst?(PBMoves,i[1])
+          noflip=false
+          if (userIndex&1)==0   # On player's side
+            anim=move2anim[0][getConst(PBMoves,i[1])]
+          else                  # On opposing side
+            anim=move2anim[1][getConst(PBMoves,i[1])]
+            noflip=true if anim
+            anim=move2anim[0][getConst(PBMoves,i[1])] if !anim
+          end
+          return [anim,noflip] if anim
+          break
+        end
+      end
+      # Default animation for the move's type not found, use Tackle's animation
+      # Animación por defecto para tipos de movimientos no encontrados, se usa la animación de Placaje
+      if hasConst?(PBMoves,:TACKLE)
+        anim=move2anim[0][getConst(PBMoves,:TACKLE)]
+        return [anim,false] if anim
+      end
+    rescue
+      return nil
+    end
+    return nil
+  end
+
+  def pbAnimation(moveid,user,target,hitnum=0)
+    animid=pbFindAnimation(moveid,0,hitnum)
+    return if !animid
+    anim=animid[0]
+    $pkmn_animations=load_data("Data/PkmnAnimations.rxdata") if $pkmn_animations && $pkmn_animations.nil?
+    animations=$pkmn_animations
+    
+    # Envolver el Pokémon para que sea compatible con playTiming
+    wrapped_user = user.is_a?(PokeBattle_Pokemon) ? ContestPokemonWrapper.new(user) : user
+    wrapped_target = target.is_a?(PokeBattle_Pokemon) ? ContestPokemonWrapper.new(target) : target
+    if animid[1] # On opposing side and using OppMove animation
+      pbAnimationCore(animations[anim], wrapped_target, wrapped_user)
+    else # On player's side, and/or using Move animation
+      pbAnimationCore(animations[anim], wrapped_user, wrapped_target)
+    end
+  end
+  
+  def pbCommonAnimation(animname,user,target,atself=true)
+    $pkmn_animations=load_data("Data/PkmnAnimations.rxdata") if $pkmn_animations && $pkmn_animations.nil?
+    animations=$pkmn_animations
+    wrapped_user = user
+    if user && !user.is_a?(ContestPokemonWrapper) && user.is_a?(PokeBattle_Pokemon)
+      wrapped_user = ContestPokemonWrapper.new(user)
+    end
+    wrapped_target = target
+    if target && !target.is_a?(ContestPokemonWrapper) && target.is_a?(PokeBattle_Pokemon)
+      wrapped_target = ContestPokemonWrapper.new(target)
+    end
+    for i in 0...animations.length
+      if animations[i] && animations[i].name=="Common:"+animname
+        pbAnimationCore(animations[i], wrapped_user, (wrapped_target!=nil) ? wrapped_target : wrapped_user, atself)
+        return
+      end
+    end
+  end
+  
+  def pbAnimationCore(animation,user,target,atself=false)
+    return if !animation
+    @briefmessage=false
+    case @currentpos
+    when 1
+      usersprite=@sprites["pokemon1"]
+    when 2
+      usersprite=@sprites["pokemon2"]
+    when 3
+      usersprite=@sprites["pokemon3"]
+    when 4
+      usersprite=@sprites["pokemon4"]
+    end
+    targetsprite=(atself==false)? @sprites["opponent"]:usersprite
+    olduserx=usersprite ? usersprite.x : 0
+    oldusery=usersprite ? usersprite.y : 0
+    oldtargetx=targetsprite ? targetsprite.x : 0
+    oldtargety=targetsprite ? targetsprite.y : 0
+    #Start animation player
+    animplayer=PBAnimationPlayerContest.new(animation,user,target,usersprite,targetsprite,self)
+    userwidth=(!usersprite || !usersprite.bitmap || usersprite.bitmap.disposed?) ? 128 : usersprite.bitmap.width
+    userheight=(!usersprite || !usersprite.bitmap || usersprite.bitmap.disposed?) ? 128 : usersprite.bitmap.height
+    targetwidth=(!targetsprite.bitmap || targetsprite.bitmap.disposed?) ? 128 : targetsprite.bitmap.width
+    targetheight=(!targetsprite.bitmap || targetsprite.bitmap.disposed?) ? 128 : targetsprite.bitmap.height
+    animplayer.setLineTransform(
+    PokeBattle_SceneConstants::FOCUSUSER_X,PokeBattle_SceneConstants::FOCUSUSER_Y,
+    PokeBattle_SceneConstants::FOCUSTARGET_X,PokeBattle_SceneConstants::FOCUSTARGET_Y,
+    olduserx+(userwidth/2),oldusery+(userheight/2),
+    oldtargetx+(targetwidth/2),oldtargety+(targetheight/2))
+    animplayer.start
+    while animplayer.playing?
+      animplayer.update
+      Graphics.update
+    end
+    usersprite.ox=0 if usersprite
+    usersprite.oy=0 if usersprite
+    usersprite.x=olduserx if usersprite
+    usersprite.y=oldusery if usersprite
+    targetsprite.ox=0 if targetsprite
+    targetsprite.oy=0 if targetsprite
+    targetsprite.x=oldtargetx if targetsprite
+    targetsprite.y=oldtargety if targetsprite
+    animplayer.dispose
+  end
+  # End of Animation Stuff
+  ###############################################################################
+end
+
+################################################################################
+# Animation player for contest
+################################################################################
+
+class PBAnimationPlayerContest < PBAnimationPlayerX
+  attr_accessor :looping
+  MAXSPRITES=30
+
+  def initialize(animation,user,target,usersprite,targetsprite,scene=nil,ineditor=false)
+    @animation=animation
+    # Guardar el usuario original (puede ser wrapper o Pokémon directo)
+    @user=user
+    @usersprite=usersprite
+    @targetsprite=targetsprite
+    @userbitmap=(@usersprite && @usersprite.bitmap) ? @usersprite.bitmap : nil
+    @targetbitmap=(@targetsprite && @targetsprite.bitmap) ? @targetsprite.bitmap : nil
+    @scene=scene
+    @viewport=Viewport.new(0,0,Graphics.width,Graphics.height)
+    @viewport.z=99999
+    @ineditor=ineditor
+    @looping=false
+    @animbitmap=nil
+    @frame=-1
+    @srcLine=nil
+    @dstLine=nil
+    @userOrig=getSpriteCenter(@usersprite)
+    @targetOrig=getSpriteCenter(@targetsprite)
+    @animsprites=[]
+    @animsprites[0]=@usersprite
+    @animsprites[1]=@targetsprite
+    for i in 2...MAXSPRITES
+      @animsprites[i]=Sprite.new(@viewport)
+      @animsprites[i].bitmap=nil
+      @animsprites[i].visible=false
+    end
+
+    @bgColor=ColoredPlane.new(Color.new(0,0,0),@viewport)
+    @bgColor.borderX=64 if ineditor
+    @bgColor.borderY=64 if ineditor
+    @bgColor.z=2
+    @bgColor.opacity=0
+    @bgColor.refresh
+    @bgGraphic=AnimatedPlane.new(@viewport)
+    @bgGraphic.setBitmap(nil)
+    @bgGraphic.borderX=64 if ineditor
+    @bgGraphic.borderY=64 if ineditor
+    @bgGraphic.z=2
+    @bgGraphic.opacity=0
+    @bgGraphic.refresh
+    @oldbg=[]
+
+    @foColor=ColoredPlane.new(Color.new(0,0,0),@viewport)
+    @foColor.borderX=64 if ineditor
+    @foColor.borderY=64 if ineditor
+    @foColor.z=38
+    @foColor.opacity=0
+    @foColor.refresh
+    @foGraphic=AnimatedPlane.new(@viewport)
+    @foGraphic.setBitmap(nil)
+    @foGraphic.borderX=64 if ineditor
+    @foGraphic.borderY=64 if ineditor
+    @foGraphic.z=38
+    @foGraphic.opacity=0
+    @foGraphic.refresh
+    @oldfo=[]
+  end
+
+  def update
+    return if @frame<0
+    if (@frame>>1) >= @animation.length
+      @frame=(@looping) ? 0 : -1
+      if @frame<0
+        @animbitmap.dispose if @animbitmap
+        @animbitmap=nil
+        return
+      end
+    end
+    if !@animbitmap || @animbitmap.disposed?
+      @animbitmap=AnimatedBitmap.new("Graphics/Animations/"+@animation.graphic,
+      @animation.hue).deanimate
+      for i in 0...MAXSPRITES
+        @animsprites[i].bitmap=@animbitmap if @animsprites[i]
+      end
+    end
+    @bgGraphic.update
+    @bgColor.update
+    @foGraphic.update
+    @foColor.update
+    if (@frame&1)==0
+      thisframe=@animation[@frame>>1]
+      # Make all cel sprites invisible
+      for i in 0...MAXSPRITES
+        @animsprites[i].visible=false if @animsprites[i]
+      end
+      # Set each cel sprite accordingly
+      for i in 0...thisframe.length
+        cel=thisframe[i]
+        next if !cel
+        sprite=@animsprites[i]
+        next if !sprite
+        # Set cel sprite's graphic
+        if cel[AnimFrame::PATTERN]==-1
+          sprite.bitmap=@userbitmap
+        elsif cel[AnimFrame::PATTERN]==-2
+          sprite.bitmap=@targetbitmap
+        else
+          sprite.bitmap=@animbitmap
+        end
+        cel[AnimFrame::MIRROR]=1
+        # Apply settings to the cel sprite
+        pbSpriteSetAnimFrame(sprite,cel,@usersprite,@targetsprite)
+        case cel[AnimFrame::FOCUS]
+        when 1 # Focused on target
+          sprite.x=cel[AnimFrame::X]+@targetOrig[0]-PokeBattle_SceneConstants::FOCUSTARGET_X
+          sprite.y=cel[AnimFrame::Y]+@targetOrig[1]-PokeBattle_SceneConstants::FOCUSTARGET_Y
+        when 2 # Focused on user
+          sprite.x=cel[AnimFrame::X]+@userOrig[0]-PokeBattle_SceneConstants::FOCUSUSER_X
+          sprite.y=cel[AnimFrame::Y]+@userOrig[1]-PokeBattle_SceneConstants::FOCUSUSER_Y
+        when 3 # Focused on user and target
+          if @srcLine && @dstLine
+            point=transformPoint(
+            @srcLine[0],@srcLine[1],@srcLine[2],@srcLine[3],
+            @dstLine[0],@dstLine[1],@dstLine[2],@dstLine[3],
+            sprite.x,sprite.y)
+            sprite.x=point[0]
+            sprite.y=point[1]
+          end
+        end
+        sprite.x+=64 if @ineditor
+        sprite.y+=64 if @ineditor
+      end
+      # Play timings - ahora con @user que puede ser wrapper o Pokémon
+      @animation.playTiming(@frame>>1,@bgGraphic,@bgColor,@foGraphic,@foColor,@oldbg,@oldfo,@user)
+    end
+    @frame+=1
+  end
+end
+
+####### OVERRIDE DE PokeBattle_AnimationPlayer PARA EVITAR UN CRASH ####### 
+class PBAnimation < Array
+  def playTiming(frame,bgGraphic,bgColor,foGraphic,foColor,oldbg=[],oldfo=[],user=nil)
+    for i in @timing
+      if i.frame==frame
+        case i.timingType
+        when 0   # Play SE
+          if i.name && i.name!=""
+            pbSEPlay(i.name,i.volume,i.pitch)
+          else
+            if user && user.respond_to?(:pokemon)
+              poke=(user && user.pokemon) ? user.pokemon : 1
+              name=(pbCryFile(poke) rescue nil)
+              pbSEPlay(name,i.volume,i.pitch) if name
+            end
+          end
+#          if sprite
+#            sprite.flash(i.flashColor,i.flashDuration*2) if i.flashScope==1
+#            sprite.flash(nil,i.flashDuration*2) if i.flashScope==3
+#          end
+        when 1   # Set background graphic (immediate)
+          if i.name && i.name!=""
+            bgGraphic.setBitmap("Graphics/Animations/"+i.name)
+            bgGraphic.ox=-i.bgX || 0
+            bgGraphic.oy=-i.bgY || 0
+            bgGraphic.color=Color.new(i.colorRed || 0,i.colorGreen || 0,i.colorBlue || 0,i.colorAlpha || 0)
+            bgGraphic.opacity=i.opacity || 0
+            bgColor.opacity=0
+          else
+            bgGraphic.setBitmap(nil)
+            bgGraphic.opacity=0
+            bgColor.color=Color.new(i.colorRed || 0,i.colorGreen || 0,i.colorBlue || 0,i.colorAlpha || 0)
+            bgColor.opacity=i.opacity || 0
+          end
+        when 2   # Move/recolour background graphic
+          if bgGraphic.bitmap!=nil
+            oldbg[0]=bgGraphic.ox || 0
+            oldbg[1]=bgGraphic.oy || 0
+            oldbg[2]=bgGraphic.opacity || 0
+            oldbg[3]=bgGraphic.color.clone || Color.new(0,0,0,0)
+          else
+            oldbg[0]=0
+            oldbg[1]=0
+            oldbg[2]=bgColor.opacity || 0
+            oldbg[3]=bgColor.color.clone || Color.new(0,0,0,0)
+          end
+        when 3   # Set foreground graphic (immediate)
+          if i.name && i.name!=""
+            foGraphic.setBitmap("Graphics/Animations/"+i.name)
+            foGraphic.ox=-i.bgX || 0
+            foGraphic.oy=-i.bgY || 0
+            foGraphic.color=Color.new(i.colorRed || 0,i.colorGreen || 0,i.colorBlue || 0,i.colorAlpha || 0)
+            foGraphic.opacity=i.opacity || 0
+            foColor.opacity=0
+          else
+            foGraphic.setBitmap(nil)
+            foGraphic.opacity=0
+            foColor.color=Color.new(i.colorRed || 0,i.colorGreen || 0,i.colorBlue || 0,i.colorAlpha || 0)
+            foColor.opacity=i.opacity || 0
+          end
+        when 4   # Move/recolour foreground graphic
+          if foGraphic.bitmap!=nil
+            oldfo[0]=foGraphic.ox || 0
+            oldfo[1]=foGraphic.oy || 0
+            oldfo[2]=foGraphic.opacity || 0
+            oldfo[3]=foGraphic.color.clone || Color.new(0,0,0,0)
+          else
+            oldfo[0]=0
+            oldfo[1]=0
+            oldfo[2]=foColor.opacity || 0
+            oldfo[3]=foColor.color.clone || Color.new(0,0,0,0)
+          end
+        end
+      end
+    end
+    for i in @timing
+      case i.timingType
+      when 2
+        if i.duration && i.duration>0 && frame>=i.frame && frame<=(i.frame+i.duration)
+          fraction=(frame-i.frame)*1.0/i.duration
+          if bgGraphic.bitmap!=nil
+            bgGraphic.ox=oldbg[0]-(i.bgX-oldbg[0])*fraction if i.bgX!=nil
+            bgGraphic.oy=oldbg[1]-(i.bgY-oldbg[1])*fraction if i.bgY!=nil
+            bgGraphic.opacity=oldbg[2]+(i.opacity-oldbg[2])*fraction if i.opacity!=nil
+            cr=(i.colorRed!=nil) ? oldbg[3].red+(i.colorRed-oldbg[3].red)*fraction : oldbg[3].red
+            cg=(i.colorGreen!=nil) ? oldbg[3].green+(i.colorGreen-oldbg[3].green)*fraction : oldbg[3].green
+            cb=(i.colorBlue!=nil) ? oldbg[3].blue+(i.colorBlue-oldbg[3].blue)*fraction : oldbg[3].blue
+            ca=(i.colorAlpha!=nil) ? oldbg[3].alpha+(i.colorAlpha-oldbg[3].alpha)*fraction : oldbg[3].alpha
+            bgGraphic.color=Color.new(cr,cg,cb,ca)
+          else
+            bgColor.opacity=oldbg[2]+(i.opacity-oldbg[2])*fraction if i.opacity!=nil
+            cr=(i.colorRed!=nil) ? oldbg[3].red+(i.colorRed-oldbg[3].red)*fraction : oldbg[3].red
+            cg=(i.colorGreen!=nil) ? oldbg[3].green+(i.colorGreen-oldbg[3].green)*fraction : oldbg[3].green
+            cb=(i.colorBlue!=nil) ? oldbg[3].blue+(i.colorBlue-oldbg[3].blue)*fraction : oldbg[3].blue
+            ca=(i.colorAlpha!=nil) ? oldbg[3].alpha+(i.colorAlpha-oldbg[3].alpha)*fraction : oldbg[3].alpha
+            bgColor.color=Color.new(cr,cg,cb,ca)
+          end
+        end
+      when 4
+        if i.duration && i.duration>0 && frame>=i.frame && frame<=(i.frame+i.duration)
+          fraction=(frame-i.frame)*1.0/i.duration
+          if foGraphic.bitmap!=nil
+            foGraphic.ox=oldfo[0]-(i.bgX-oldfo[0])*fraction if i.bgX!=nil
+            foGraphic.oy=oldfo[1]-(i.bgY-oldfo[1])*fraction if i.bgY!=nil
+            foGraphic.opacity=oldfo[2]+(i.opacity-oldfo[2])*fraction if i.opacity!=nil
+            cr=(i.colorRed!=nil) ? oldfo[3].red+(i.colorRed-oldfo[3].red)*fraction : oldfo[3].red
+            cg=(i.colorGreen!=nil) ? oldfo[3].green+(i.colorGreen-oldfo[3].green)*fraction : oldfo[3].green
+            cb=(i.colorBlue!=nil) ? oldfo[3].blue+(i.colorBlue-oldfo[3].blue)*fraction : oldfo[3].blue
+            ca=(i.colorAlpha!=nil) ? oldfo[3].alpha+(i.colorAlpha-oldfo[3].alpha)*fraction : oldfo[3].alpha
+            foGraphic.color=Color.new(cr,cg,cb,ca)
+          else
+            foColor.opacity=oldfo[2]+(i.opacity-oldfo[2])*fraction if i.opacity!=nil
+            cr=(i.colorRed!=nil) ? oldfo[3].red+(i.colorRed-oldfo[3].red)*fraction : oldfo[3].red
+            cg=(i.colorGreen!=nil) ? oldfo[3].green+(i.colorGreen-oldfo[3].green)*fraction : oldfo[3].green
+            cb=(i.colorBlue!=nil) ? oldfo[3].blue+(i.colorBlue-oldfo[3].blue)*fraction : oldfo[3].blue
+            ca=(i.colorAlpha!=nil) ? oldfo[3].alpha+(i.colorAlpha-oldfo[3].alpha)*fraction : oldfo[3].alpha
+            foColor.color=Color.new(cr,cg,cb,ca)
+          end
+        end
+      end
+    end
+  end
+end
