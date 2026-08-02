@@ -45,7 +45,7 @@ gifts.push(MysteryGiftCard.new(
 gifts.push(MysteryGiftCard.new(
   :RegaloBici,                       # ID único, no lo repitas nunca
   _INTL("Bici"),            # Nombre (lista / tarjeta)
-  PBItems::BIKE,                        # Icono (especie, objeto o ruta)
+  PBItems::BICYCLE,            # Icono (especie, objeto o ruta)
   _INTL("Un Pichu especial del evento PRI2010. Conoce Voltiocambio.")
 ) {
   @pokemon = PokeBattle_Pokemon.new(:PICHU,30,$Trainer)
