@@ -54,3 +54,90 @@ gifts.push(MysteryGiftCard.new(
   showHideItem(false) rescue nil
 
 })
+
+
+gifts.push(MysteryGiftCard.new(
+  :Regalo2,
+  _INTL("Masterball"),
+  [PBItems::POTION, :item],  # Array con el icono y el tipo
+  _INTL("Una Masterball")
+) {
+  @item=PBItems::MASTERBALL
+  
+  showHideItem(true) rescue nil
+  Kernel.pbItemBall(@item)
+  showHideItem(false) rescue nil
+
+})
+
+
+gifts.push(MysteryGiftCard.new(
+  :Regalo1,
+  _INTL("Masterball"),
+  [PBItems::POTION, :item],  # Array con el icono y el tipo
+  _INTL("Una Masterball")
+) {
+  @item=PBItems::MASTERBALL
+  
+  showHideItem(true) rescue nil
+  Kernel.pbItemBall(@item)
+  showHideItem(false) rescue nil
+
+})
+
+gifts.push(MysteryGiftCard.new(
+  :Regalo3,
+  _INTL("Masterball"),
+  [PBItems::POTION, :item],  # Array con el icono y el tipo
+  _INTL("Una Masterball")
+) {
+  @item=PBItems::MASTERBALL
+  
+  showHideItem(true) rescue nil
+  Kernel.pbItemBall(@item)
+  showHideItem(false) rescue nil
+
+})
+
+
+gifts.push(MysteryGiftCard.new(
+  :Regalo4,
+  _INTL("Masterball"),
+  [PBItems::POTION, :item],  # Array con el icono y el tipo
+  _INTL("Una Masterball")
+) {
+  @item=PBItems::MASTERBALL
+  
+  showHideItem(true) rescue nil
+  Kernel.pbItemBall(@item)
+  showHideItem(false) rescue nil
+
+})
+
+gifts.push(MysteryGiftCard.new(
+  :Regalo6,
+  _INTL("Masterball"),
+  [PBItems::POTION, :item],  # Array con el icono y el tipo
+  _INTL("Una Masterball")
+) {
+  @item=PBItems::MASTERBALL
+  
+  showHideItem(true) rescue nil
+  Kernel.pbItemBall(@item)
+  showHideItem(false) rescue nil
+
+})
+
+gifts.push(MysteryGiftCard.new(
+  :Regalo5,
+  _INTL("Masterball"),
+  [PBItems::POTION, :item],  # Array con el icono y el tipo
+  _INTL("Una Masterball")
+) {
+  @item=PBItems::MASTERBALL
+  
+  showHideItem(true) rescue nil
+  Kernel.pbItemBall(@item)
+  showHideItem(false) rescue nil
+
+})
