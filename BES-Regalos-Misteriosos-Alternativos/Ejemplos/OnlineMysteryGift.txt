@@ -47,7 +47,8 @@ gifts.push(MysteryGiftCard.new(
   [PBItems::MASTERBALL, :item],  # Array con el icono y el tipo
   _INTL("Una Masterball")
 ) {
-  showHideItem(true, :MASTERBALL)
+  @item=PBItems::MASTERBALL
+  showHideItem(true, @item)
   Kernel.pbItemBall(:MASTERBALL)
-  showHideItem(false, :MASTERBALL)
+  showHideItem(false, @item)
 })
