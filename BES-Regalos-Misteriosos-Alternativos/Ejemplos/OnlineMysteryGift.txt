@@ -1,73 +1,72 @@
 ####################################################
 # BASE DE REGALO MISTERIOSO PARA EL SCRIPT DE REGALOS MISTERIOSOS AVANZADOS DE CLARA
-# Tómalo de base para crear o añadir nuevos eventos. Puedes entregar más de un evento a la vez.
+# Tómalo de base para crear o añadir nuevos eventos. Puedes entregar más de un
+# evento a la vez: solo añade más "gifts.push(...)".
 # Subelo a Pastebin o a Github como un txt y coge el enlace del archivo en RAW.
+#
+# YA NO hace falta comprobar tú mismo si el regalo se ha recibido, ni mostrar
+# el mensaje de "no se encontró ningún regalo": de eso se encarga
+# pbProcessGiftsList automáticamente a partir del `id` de cada
+# MysteryGiftCard. Solo tienes que definir los regalos que existen.
 ####################################################
-  ret = false
-  #Comprueba que el jugador ya tenga ese regalo especifico, para objetos es mejor usar otro tipo de check.
-  #Para pokemon con evolucion, debes comprobar que esten ambas especies.
-    if !hasEventMon?(PBSpecies::PICHU,:CLASSIC,"PRI2010") 
-    Kernel.pbMessage(_INTL("Regalo Misterioso en línea encontrado.\\wtnp[20]"))
-    @pokemon=PokeBattle_Pokemon.new(:PICHU,30,$Trainer)
-    #ESTOS PARAMETROS SON PARA EL CHECK de hasEventMon?#
-    @pokemon.giveRibbon(PBRibbons::CLASSIC)
-    @pokemon.ot="PRI2010"
-    ####################################################
-    @pokemon.trainerID=03050
-    @pokemon.setItem(:EVERSTONE)
-    @pokemon.pbLearnMove(:VOLTTACKLE)
-    @pokemon.pbLearnMove(:ENDEAVOR)
-    @pokemon.pbLearnMove(:ENDURE)
-    @pokemon.makeShiny
-    @pokemon.setNature(:JOLLY)
-    #Esto permite aleatorizar los iv's del pokémon, pero garantiza que 3 de ellos sean perfectos.
-    maxIV = 1
-    @pokemon.iv[rand(6)]=31
-    randivs = [0,1,2,3,4,5]
-    for i in randivs.shuffle
-      next if @pokemon.iv[i]==31
-      maxIV +=1
-      @pokemon.iv[i]=31 
-      break if maxIV>=3
-    end
-    @pokemon.happiness=100
-    @pokemon.obtainMode=4
-    @pokemon.calcStats
-    showHidePokemon rescue nil
-    Kernel.pbAddPokemon(@pokemon,nil,true,false)
-    showHidePokemon(false) rescue nil
-    ret = true
+
+gifts.push(MysteryGiftCard.new(
+  :RegaloPichu2010,                       # ID único, no lo repitas nunca
+  _INTL("Pichu conmemorativo"),            # Nombre (lista / tarjeta)
+  PBSpecies::PICHU,                        # Icono (especie, objeto o ruta)
+  _INTL("Un Pichu especial del evento PRI2010. Conoce Voltiocambio.")
+) {
+  @pokemon = PokeBattle_Pokemon.new(:PICHU,30,$Trainer)
+  @pokemon.ot = "PRI2010"
+  @pokemon.trainerID = 3050
+  @pokemon.setItem(:EVERSTONE)
+  @pokemon.pbLearnMove(:VOLTTACKLE)
+  @pokemon.pbLearnMove(:ENDEAVOR)
+  @pokemon.pbLearnMove(:ENDURE)
+  @pokemon.makeShiny
+  @pokemon.setNature(:JOLLY)
+  # Esto permite aleatorizar los IV's del Pokémon, garantizando que 3 sean perfectos.
+  maxIV = 1
+  @pokemon.iv[rand(6)] = 31
+  [0,1,2,3,4,5].shuffle.each do |i|
+    next if @pokemon.iv[i]==31
+    maxIV += 1
+    @pokemon.iv[i] = 31
+    break if maxIV>=3
   end
-  if !hasEventMon?(PBSpecies::CELEBI,:CLASSIC,"INV2011") 
-    Kernel.pbMessage(_INTL("Regalo Misterioso en línea encontrado.\\wtnp[20]"))
-    @pokemon=PokeBattle_Pokemon.new(:CELEBI,50,$Trainer)
-    #ESTOS PARAMETROS SON PARA EL CHECK de hasEventMon?#
-    @pokemon.giveRibbon(PBRibbons::CLASSIC)
-    @pokemon.ot="INV2011"
-    ####################################################
-    @pokemon.trainerID=01211
-    @pokemon.setItem(:JABOCABERRY)
-    @pokemon.pbLearnMove(:HEALINGWISH)
-    @pokemon.setNature(:MODEST)
-    #Esto permite aleatorizar los iv's del pokémon, pero garantiza que 3 de ellos sean perfectos.
-    maxIV = 1
-    @pokemon.iv[rand(6)]=31
-    randivs = [0,1,2,3,4,5]
-    for i in randivs.shuffle
-      next if @pokemon.iv[i]==31
-      maxIV +=1
-      @pokemon.iv[i]=31 
-      break if maxIV>=3
-    end
-    @pokemon.makeShiny
-    @pokemon.happiness=100
-    @pokemon.obtainMode=4
-    @pokemon.calcStats
-    showHidePokemon rescue nil
-    Kernel.pbAddPokemon(@pokemon,nil,true,false)
-    showHidePokemon(false) rescue nil
-    ret = true
+  @pokemon.happiness = 100
+  @pokemon.obtainMode = 4
+  @pokemon.calcStats
+  showHidePokemon rescue nil
+  Kernel.pbAddPokemon(@pokemon,nil,true,false)
+  showHidePokemon(false) rescue nil
+})
+
+gifts.push(MysteryGiftCard.new(
+  :RegaloCelebi2011,
+  _INTL("Celebi de Iwate"),
+  PBSpecies::CELEBI,
+  _INTL("Un Celebi distribuido en el evento INV2011. Conoce Deseo Cura.")
+) {
+  @pokemon = PokeBattle_Pokemon.new(:CELEBI,50,$Trainer)
+  @pokemon.ot = "INV2011"
+  @pokemon.trainerID = 1211
+  @pokemon.setItem(:JABOCABERRY)
+  @pokemon.pbLearnMove(:HEALINGWISH)
+  @pokemon.setNature(:MODEST)
+  maxIV = 1
+  @pokemon.iv[rand(6)] = 31
+  [0,1,2,3,4,5].shuffle.each do |i|
+    next if @pokemon.iv[i]==31
+    maxIV += 1
+    @pokemon.iv[i] = 31
+    break if maxIV>=3
   end
-  if !ret
-    Kernel.pbMessage(_INTL("No se encontró ningún Regalo Misterioso en línea.\\wtnp[20]"))
-  end
+  @pokemon.makeShiny
+  @pokemon.happiness = 100
+  @pokemon.obtainMode = 4
+  @pokemon.calcStats
+  showHidePokemon rescue nil
+  Kernel.pbAddPokemon(@pokemon,nil,true,false)
+  showHidePokemon(false) rescue nil
+})

@@ -1,0 +1,73 @@
+####################################################
+# BASE DE REGALO MISTERIOSO PARA EL SCRIPT DE REGALOS MISTERIOSOS AVANZADOS DE CLARA
+# Tómalo de base para crear o añadir nuevos eventos. Puedes entregar más de un evento a la vez.
+# Subelo a Pastebin o a Github como un txt y coge el enlace del archivo en RAW.
+####################################################
+  ret = false
+  #Comprueba que el jugador ya tenga ese regalo especifico, para objetos es mejor usar otro tipo de check.
+  #Para pokemon con evolucion, debes comprobar que esten ambas especies.
+    if !hasEventMon?(PBSpecies::PICHU,:CLASSIC,"PRI2010") 
+    Kernel.pbMessage(_INTL("Regalo Misterioso en línea encontrado.\\wtnp[20]"))
+    @pokemon=PokeBattle_Pokemon.new(:PICHU,30,$Trainer)
+    #ESTOS PARAMETROS SON PARA EL CHECK de hasEventMon?#
+    @pokemon.giveRibbon(PBRibbons::CLASSIC)
+    @pokemon.ot="PRI2010"
+    ####################################################
+    @pokemon.trainerID=03050
+    @pokemon.setItem(:EVERSTONE)
+    @pokemon.pbLearnMove(:VOLTTACKLE)
+    @pokemon.pbLearnMove(:ENDEAVOR)
+    @pokemon.pbLearnMove(:ENDURE)
+    @pokemon.makeShiny
+    @pokemon.setNature(:JOLLY)
+    #Esto permite aleatorizar los iv's del pokémon, pero garantiza que 3 de ellos sean perfectos.
+    maxIV = 1
+    @pokemon.iv[rand(6)]=31
+    randivs = [0,1,2,3,4,5]
+    for i in randivs.shuffle
+      next if @pokemon.iv[i]==31
+      maxIV +=1
+      @pokemon.iv[i]=31 
+      break if maxIV>=3
+    end
+    @pokemon.happiness=100
+    @pokemon.obtainMode=4
+    @pokemon.calcStats
+    showHidePokemon rescue nil
+    Kernel.pbAddPokemon(@pokemon,nil,true,false)
+    showHidePokemon(false) rescue nil
+    ret = true
+  end
+  if !hasEventMon?(PBSpecies::CELEBI,:CLASSIC,"INV2011") 
+    Kernel.pbMessage(_INTL("Regalo Misterioso en línea encontrado.\\wtnp[20]"))
+    @pokemon=PokeBattle_Pokemon.new(:CELEBI,50,$Trainer)
+    #ESTOS PARAMETROS SON PARA EL CHECK de hasEventMon?#
+    @pokemon.giveRibbon(PBRibbons::CLASSIC)
+    @pokemon.ot="INV2011"
+    ####################################################
+    @pokemon.trainerID=01211
+    @pokemon.setItem(:JABOCABERRY)
+    @pokemon.pbLearnMove(:HEALINGWISH)
+    @pokemon.setNature(:MODEST)
+    #Esto permite aleatorizar los iv's del pokémon, pero garantiza que 3 de ellos sean perfectos.
+    maxIV = 1
+    @pokemon.iv[rand(6)]=31
+    randivs = [0,1,2,3,4,5]
+    for i in randivs.shuffle
+      next if @pokemon.iv[i]==31
+      maxIV +=1
+      @pokemon.iv[i]=31 
+      break if maxIV>=3
+    end
+    @pokemon.makeShiny
+    @pokemon.happiness=100
+    @pokemon.obtainMode=4
+    @pokemon.calcStats
+    showHidePokemon rescue nil
+    Kernel.pbAddPokemon(@pokemon,nil,true,false)
+    showHidePokemon(false) rescue nil
+    ret = true
+  end
+  if !ret
+    Kernel.pbMessage(_INTL("No se encontró ningún Regalo Misterioso en línea.\\wtnp[20]"))
+  end
