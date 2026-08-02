@@ -48,7 +48,9 @@ gifts.push(MysteryGiftCard.new(
   _INTL("Una Masterball")
 ) {
   @item=PBItems::MASTERBALL
-  showHideItem(true, @item)
+  
+  showHideItem(true) rescue nil
   Kernel.pbItemBall(:MASTERBALL)
-  showHideItem(false, @item)
+  showHideItem(false) rescue nil
+
 })
