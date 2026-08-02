@@ -50,7 +50,7 @@ gifts.push(MysteryGiftCard.new(
   @item=PBItems::MASTERBALL
   
   showHideItem(true) rescue nil
-  Kernel.pbItemBall(:MASTERBALL)
+  Kernel.pbItemBall(@item)
   showHideItem(false) rescue nil
 
 })
