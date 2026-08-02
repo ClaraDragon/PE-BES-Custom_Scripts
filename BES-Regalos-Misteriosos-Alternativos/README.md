@@ -6,11 +6,11 @@ https://raw.githubusercontent.com/PokeLiberty/Essentials-BES/main/Data/Scripts/0
 
 * Primero Copiamos y pegamos este script encima de main: Regalos-Misteriosos-Alternativos
 * Tras hacer esto, creamos un repositorio de Github con 2 .txt o 2 pastebin(con cuenta) y en cada uno de ellos pegamos estos scripts en él.
-* * [Regalo Código](https://github.com/ClaraDragon/BES-Regalos-Misteriosos-Alternativos/blob/main/Ejemplos/CodeMysteryGift.txt)
-* * [Regalo Online](https://github.com/ClaraDragon/BES-Regalos-Misteriosos-Alternativos/blob/main/Ejemplos/OnlineMysteryGift.txt)
+* * [Regalo Código](https://raw.githubusercontent.com/ClaraDragon/PE-BES-Custom_Scripts/refs/heads/main/BES-Regalos-Misteriosos-Alternativos/Ejemplos/CodeMysteryGift.txt)
+* * [Regalo Online](https://raw.githubusercontent.com/ClaraDragon/PE-BES-Custom_Scripts/refs/heads/main/BES-Regalos-Misteriosos-Alternativos/Ejemplos/OnlineMysteryGift.txt)
 * Ahora tenemos que editar estos 2 scripts, no es algo difícil, ya que hay 2 pokémon creados como ejemplo. Una vez los tengáis editado a vuestro gusto, guardad el script y abrir el enlace de este en formato RAW(Muy importante), copiamos el link y lo cambiamos por los que hay en el inicio del script que hemos añadido a nuestro proyecto.
 * Finalmente, tendremos que hacer que desde un evento u otro script se llame al script: `pbCodeMysteryGift`
 
+Graficos de Pokémon Essentials BW, créditos a KleinStudio.
 
-
-![MysteryGift2](https://github.com/ClaraDragon/BES-Regalos-Misteriosos-Alternativos/assets/87387080/27b7f665-a7fb-464e-befa-d0bccc13a472)
+![MysteryGift2](https://media.discordapp.net/attachments/449629946353156096/1533514263069589721/misterygifts.gif?ex=6a70c3f3&is=6a6f7273&hm=a6715d883c3d84828599c39d195e6c1a93ed8135b80bbbea91095239a88a2e95&=)
