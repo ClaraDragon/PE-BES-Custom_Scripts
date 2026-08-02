@@ -41,7 +41,37 @@ gifts.push(MysteryGiftCard.new(
   Kernel.pbAddPokemon(@pokemon,nil,true,false)
   showHidePokemon(false) rescue nil
 })
-
+gifts.push(MysteryGiftCard.new(
+  :RegaloBici,                       # ID único, no lo repitas nunca
+  _INTL("Bici"),            # Nombre (lista / tarjeta)
+  PBItems::BIKE,                        # Icono (especie, objeto o ruta)
+  _INTL("Un Pichu especial del evento PRI2010. Conoce Voltiocambio.")
+) {
+  @pokemon = PokeBattle_Pokemon.new(:PICHU,30,$Trainer)
+  @pokemon.ot = "PRI2010"
+  @pokemon.trainerID = 3050
+  @pokemon.setItem(:EVERSTONE)
+  @pokemon.pbLearnMove(:VOLTTACKLE)
+  @pokemon.pbLearnMove(:ENDEAVOR)
+  @pokemon.pbLearnMove(:ENDURE)
+  @pokemon.makeShiny
+  @pokemon.setNature(:JOLLY)
+  # Esto permite aleatorizar los IV's del Pokémon, garantizando que 3 sean perfectos.
+  maxIV = 1
+  @pokemon.iv[rand(6)] = 31
+  [0,1,2,3,4,5].shuffle.each do |i|
+    next if @pokemon.iv[i]==31
+    maxIV += 1
+    @pokemon.iv[i] = 31
+    break if maxIV>=3
+  end
+  @pokemon.happiness = 100
+  @pokemon.obtainMode = 4
+  @pokemon.calcStats
+  showHidePokemon rescue nil
+  Kernel.pbAddPokemon(@pokemon,nil,true,false)
+  showHidePokemon(false) rescue nil
+})
 gifts.push(MysteryGiftCard.new(
   :RegaloCelebi2011,
   _INTL("Celebi de Iwate"),
