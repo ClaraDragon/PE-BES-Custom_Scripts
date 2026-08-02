@@ -43,11 +43,9 @@ gifts.push(MysteryGiftCard.new(
 
 gifts.push(MysteryGiftCard.new(
   :RegaloBici,
-  _INTL("Bici"),
-  [PBItems::BICYCLE, :item],  # Array con el icono y el tipo
-  _INTL("Una Bici")
+  _INTL("Masterball"),
+  [PBItems::MASTERBALL, :item],  # Array con el icono y el tipo
+  _INTL("Una Nasterball")
 ) {
-  # Dar bici
-  $Trainer.bicycle = true  # O como sea que se dé la bici en tu juego
-  Kernel.pbMessage(_INTL("¡Has recibido una Bici!"))
+  Kernel.pbItemBall(:MASTERBALL)
 })
