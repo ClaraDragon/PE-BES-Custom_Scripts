@@ -51,32 +51,3 @@ gifts.push(MysteryGiftCard.new(
   $Trainer.bicycle = true  # O como sea que se dé la bici en tu juego
   Kernel.pbMessage(_INTL("¡Has recibido una Bici!"))
 })
-
-gifts.push(MysteryGiftCard.new(
-  :RegaloCelebi2011,
-  _INTL("Celebi de Iwate"),
-  PBSpecies::CELEBI,
-  _INTL("Un Celebi distribuido en el evento INV2011. Conoce Deseo Cura.")
-) {
-  @pokemon = PokeBattle_Pokemon.new(:CELEBI,50,$Trainer)
-  @pokemon.ot = "INV2011"
-  @pokemon.trainerID = 1211
-  @pokemon.setItem(:JABOCABERRY)
-  @pokemon.pbLearnMove(:HEALINGWISH)
-  @pokemon.setNature(:MODEST)
-  maxIV = 1
-  @pokemon.iv[rand(6)] = 31
-  [0,1,2,3,4,5].shuffle.each do |i|
-    next if @pokemon.iv[i]==31
-    maxIV += 1
-    @pokemon.iv[i] = 31
-    break if maxIV>=3
-  end
-  @pokemon.makeShiny
-  @pokemon.happiness = 100
-  @pokemon.obtainMode = 4
-  @pokemon.calcStats
-  showHidePokemon rescue nil
-  Kernel.pbAddPokemon(@pokemon,nil,true,false)
-  showHidePokemon(false) rescue nil
-})
