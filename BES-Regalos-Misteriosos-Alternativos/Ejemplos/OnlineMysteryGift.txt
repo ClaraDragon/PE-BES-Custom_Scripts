@@ -13,7 +13,7 @@
 gifts.push(MysteryGiftCard.new(
   :RegaloPichu2010,                       # ID único, no lo repitas nunca
   _INTL("Pichu conmemorativo"),            # Nombre (lista / tarjeta)
-  PBSpecies::PICHU,                        # Icono (especie, objeto o ruta)
+  PBSpecies::PICHU,nil,                      # Icono (especie, objeto o ruta)
   _INTL("Un Pichu especial del evento PRI2010. Conoce Voltiocambio.")
 ) {
   @pokemon = PokeBattle_Pokemon.new(:PICHU,30,$Trainer)
@@ -45,7 +45,8 @@ gifts.push(MysteryGiftCard.new(
 gifts.push(MysteryGiftCard.new(
   :RegaloBici,                       # ID único, no lo repitas nunca
   _INTL("Bici"),            # Nombre (lista / tarjeta)
-  PBItems::BICYCLE,            # Icono (especie, objeto o ruta)
+  PBItems::BICYCLE,           # Icono
+  :item,                      # ¡Tipo especificado!
   _INTL("Un Pichu especial del evento PRI2010. Conoce Voltiocambio.")
 ) {
   @pokemon = PokeBattle_Pokemon.new(:PICHU,30,$Trainer)
@@ -77,7 +78,7 @@ gifts.push(MysteryGiftCard.new(
 gifts.push(MysteryGiftCard.new(
   :RegaloCelebi2011,
   _INTL("Celebi de Iwate"),
-  PBSpecies::CELEBI,
+  PBSpecies::CELEBI,nil,
   _INTL("Un Celebi distribuido en el evento INV2011. Conoce Deseo Cura.")
 ) {
   @pokemon = PokeBattle_Pokemon.new(:CELEBI,50,$Trainer)
