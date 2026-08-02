@@ -41,6 +41,7 @@ gifts.push(MysteryGiftCard.new(
   Kernel.pbAddPokemon(@pokemon,nil,true,false)
   showHidePokemon(false) rescue nil
 })
+
 gifts.push(MysteryGiftCard.new(
   :RegaloBici,                       # ID único, no lo repitas nunca
   _INTL("Bici"),            # Nombre (lista / tarjeta)
@@ -72,6 +73,7 @@ gifts.push(MysteryGiftCard.new(
   Kernel.pbAddPokemon(@pokemon,nil,true,false)
   showHidePokemon(false) rescue nil
 })
+
 gifts.push(MysteryGiftCard.new(
   :RegaloCelebi2011,
   _INTL("Celebi de Iwate"),
