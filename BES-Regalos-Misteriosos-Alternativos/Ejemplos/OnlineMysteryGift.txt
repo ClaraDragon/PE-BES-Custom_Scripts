@@ -11,9 +11,9 @@
 ####################################################
 
 gifts.push(MysteryGiftCard.new(
-  :RegaloPichu2010,                       # ID único, no lo repitas nunca
-  _INTL("Pichu conmemorativo"),            # Nombre (lista / tarjeta)
-  PBSpecies::PICHU,                      # Icono (especie, objeto o ruta)
+  :RegaloPichu2010,
+  _INTL("Pichu conmemorativo"),
+  PBSpecies::PICHU,  # Solo el icono, sin tipo
   _INTL("Un Pichu especial del evento PRI2010. Conoce Voltiocambio.")
 ) {
   @pokemon = PokeBattle_Pokemon.new(:PICHU,30,$Trainer)
@@ -25,7 +25,6 @@ gifts.push(MysteryGiftCard.new(
   @pokemon.pbLearnMove(:ENDURE)
   @pokemon.makeShiny
   @pokemon.setNature(:JOLLY)
-  # Esto permite aleatorizar los IV's del Pokémon, garantizando que 3 sean perfectos.
   maxIV = 1
   @pokemon.iv[rand(6)] = 31
   [0,1,2,3,4,5].shuffle.each do |i|
@@ -43,35 +42,14 @@ gifts.push(MysteryGiftCard.new(
 })
 
 gifts.push(MysteryGiftCard.new(
-  :RegaloBici,                       # ID único, no lo repitas nunca
-  _INTL("Bici"),            # Nombre (lista / tarjeta)
-  [PBItems::BICYCLE, :item],           # Icono
-  _INTL("Un Pichu especial del evento PRI2010. Conoce Voltiocambio.")
+  :RegaloBici,
+  _INTL("Bici"),
+  [PBItems::BICYCLE, :item],  # Array con el icono y el tipo
+  _INTL("Una Bici")
 ) {
-  @pokemon = PokeBattle_Pokemon.new(:PICHU,30,$Trainer)
-  @pokemon.ot = "PRI2010"
-  @pokemon.trainerID = 3050
-  @pokemon.setItem(:EVERSTONE)
-  @pokemon.pbLearnMove(:VOLTTACKLE)
-  @pokemon.pbLearnMove(:ENDEAVOR)
-  @pokemon.pbLearnMove(:ENDURE)
-  @pokemon.makeShiny
-  @pokemon.setNature(:JOLLY)
-  # Esto permite aleatorizar los IV's del Pokémon, garantizando que 3 sean perfectos.
-  maxIV = 1
-  @pokemon.iv[rand(6)] = 31
-  [0,1,2,3,4,5].shuffle.each do |i|
-    next if @pokemon.iv[i]==31
-    maxIV += 1
-    @pokemon.iv[i] = 31
-    break if maxIV>=3
-  end
-  @pokemon.happiness = 100
-  @pokemon.obtainMode = 4
-  @pokemon.calcStats
-  showHidePokemon rescue nil
-  Kernel.pbAddPokemon(@pokemon,nil,true,false)
-  showHidePokemon(false) rescue nil
+  # Dar bici
+  $Trainer.bicycle = true  # O como sea que se dé la bici en tu juego
+  Kernel.pbMessage(_INTL("¡Has recibido una Bici!"))
 })
 
 gifts.push(MysteryGiftCard.new(
